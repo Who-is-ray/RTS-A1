@@ -1,9 +1,8 @@
 /**
- * UART test code:
- * Echo's characters back that are inputted.
+ * Real Time System Assignment 1
  *
- * Author: Emad Khan, ECED4402 TA
- * Summer 2017
+ * Author: Ray Su B00634512
+ * Fall 2019
  */
 
 // UART0 & PORTA Registers
