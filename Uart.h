@@ -1,4 +1,8 @@
 
+
+#ifndef UART_H_
+#define UART_H_
+
 // UART0 & PORTA Registers
 #define GPIO_PORTA_AFSEL_R  (*((volatile unsigned long *)0x40058420))   // GPIOA Alternate Function Select Register
 #define GPIO_PORTA_DEN_R    (*((volatile unsigned long *)0x4005851C))   // GPIOA Digital Enable Register
@@ -31,3 +35,28 @@
 #define EN_TX_PA1               0x00000002  // Enable Transmit Function on PA1
 #define EN_DIG_PA0              0x00000001  // Enable Digital I/O on PA0
 #define EN_DIG_PA1              0x00000002  // Enable Digital I/O on PA1
+
+// Clock Gating Registers
+#define SYSCTL_RCGCGPIO_R      (*((volatile unsigned long *)0x400FE608))
+#define SYSCTL_RCGCUART_R      (*((volatile unsigned long *)0x400FE618))
+
+#define SYSCTL_RCGCGPIO_UART0      0x00000001  // UART0 Clock Gating Control
+#define SYSCTL_RCGCUART_GPIOA      0x00000001  // Port A Clock Gating Control
+
+// Clock Configuration Register
+#define SYSCTRL_RCC_R           (*((volatile unsigned long *)0x400FE0B0))
+
+#define CLEAR_USRSYSDIV     0xF83FFFFF  // Clear USRSYSDIV Bits
+#define SET_BYPASS      0x00000800  // Set BYPASS Bit
+
+#define NVIC_EN0_R      (*((volatile unsigned long *)0xE000E100))   // Interrupt 0-31 Set Enable Register
+#define NVIC_EN1_R      (*((volatile unsigned long *)0xE000E104))   // Interrupt 32-54 Set Enable Register
+
+void UART0_Init(void);
+void InterruptEnable(unsigned long InterruptIndex);
+void UART0_IntEnable(unsigned long flags);
+void UART0_IntHandler(void);
+void InterruptMasterEnable(void);
+void InterruptMasterDisable(void);
+
+#endif /* UART_H_ */
