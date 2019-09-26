@@ -8,6 +8,8 @@
 #include "Queue.h"
 #include "Uart.h"
 
+extern int UART_STATUS;
+
 struct Queue InQ;
 struct Queue OutQ;
 
@@ -29,7 +31,7 @@ int EnQueue(enum QueueType t, enum Source s, char v)
         case INPUT:
         {
             head = InQ.Head;
-            if((head+1)&QSM1 != InQ.Tail) // if not full
+            if(((head+1) & QSM1) != InQ.Tail) // if not full
             {
                 (InQ.queue[head]).value = v;
                 InQ.queue[head].source = s;
@@ -43,8 +45,17 @@ int EnQueue(enum QueueType t, enum Source s, char v)
             head = OutQ.Head;
             if((head+1)&QSM1 != OutQ.Tail)  // if not full
             {
-                OutQ.queue[OutQ.Head].value = v;
-                OutQ.Head=(head+1)&QSM1;
+                // if uart is busy
+                if(UART_STATUS == BUSY)
+                {
+                    OutQ.queue[OutQ.Head].value = v;
+                    OutQ.Head=(head+1)&QSM1;
+                }
+                else // uart not busy
+                {
+                    UART_STATUS = BUSY;
+                    UART0_DR_R = v;
+                }
                 rtv = TRUE;
             }
             break;

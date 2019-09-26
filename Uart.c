@@ -8,8 +8,7 @@
 #include "Uart.h"
 #include "Queue.h"
 
-extern char Data;
-extern int GotData;
+volatile int UART_STATUS = IDLE;
 
 void UART0_Init(void)
 {
@@ -62,14 +61,22 @@ void UART0_IntHandler(void)
     {
         /* RECV done - clear interrupt and make char available to application */
         UART0_ICR_R |= UART_INT_RX;
-        char value = (char)UART0_DR_R;
-        GotData = EnQueue( INPUT, UART, value);
+        EnQueue( INPUT, UART, UART0_DR_R);
     }
 
     if (UART0_MIS_R & UART_INT_TX)
     {
         /* XMIT done - clear interrupt */
         UART0_ICR_R |= UART_INT_TX;
+        char data;
+        if(DeQueue(OUTPUT, UART, &data)) // if output queue is not empty
+        {
+            UART0_DR_R = data;
+        }
+        else
+        {
+            UART_STATUS = IDLE;
+        }
     }
 }
 

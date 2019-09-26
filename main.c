@@ -10,10 +10,6 @@
 #include "Queue.h"
 #include "Uart.h"
 
-/* Globals */
-volatile char Data = 7;     /* Input data from UART receive */
-volatile int GotData;   /* T|F - Data available from UART */
-
 void main (void)
 {
     /* Initialize UART */
@@ -25,13 +21,12 @@ void main (void)
     UART0_DR_R = 60;
     while(1)
     {
-        /* Wait for input data */
-        GotData = FALSE;
-        while (!GotData) ;
         /* Input data - xmit directly */
         struct QueueData data;
-        DeQueue(INPUT,&data.source,&data.value);
-        UART0_DR_R = data.value;
+        if(DeQueue(INPUT,&data.source,&data.value) == TRUE)
+        {
+            while(EnQueue(OUTPUT, data.source, data.value)==FALSE){}
+        }
     }
 
 }

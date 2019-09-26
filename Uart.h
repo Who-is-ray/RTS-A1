@@ -52,6 +52,9 @@
 #define NVIC_EN0_R      (*((volatile unsigned long *)0xE000E100))   // Interrupt 0-31 Set Enable Register
 #define NVIC_EN1_R      (*((volatile unsigned long *)0xE000E104))   // Interrupt 32-54 Set Enable Register
 
+#define BUSY 1  // Uart is busy
+#define IDLE 0  // Uart is idles
+
 void UART0_Init(void);
 void InterruptEnable(unsigned long InterruptIndex);
 void UART0_IntEnable(unsigned long flags);
