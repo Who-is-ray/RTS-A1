@@ -10,7 +10,6 @@
 
 extern char Data;
 extern int GotData;
-extern struct Queue InQ;
 
 void UART0_Init(void)
 {
@@ -63,8 +62,8 @@ void UART0_IntHandler(void)
     {
         /* RECV done - clear interrupt and make char available to application */
         UART0_ICR_R |= UART_INT_RX;
-        Data = UART0_DR_R;
-        GotData = TRUE;
+        char value = (char)UART0_DR_R;
+        GotData = EnQueue( INPUT, UART, value);
     }
 
     if (UART0_MIS_R & UART_INT_TX)
