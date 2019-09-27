@@ -8,8 +8,6 @@
 #include "Uart.h"
 #include "Queue.h"
 
-volatile int UART_STATUS = IDLE;
-
 void UART0_Init(void)
 {
     volatile int wait;
@@ -72,10 +70,6 @@ void UART0_IntHandler(void)
         if(DeQueue(OUTPUT, UART, &data)) // if output queue is not empty
         {
             UART0_DR_R = data;
-        }
-        else
-        {
-            UART_STATUS = IDLE;
         }
     }
 }

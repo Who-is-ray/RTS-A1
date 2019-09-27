@@ -22,6 +22,7 @@
 #define INT_VEC_UART0           5           // UART0 Rx and Tx interrupt index (decimal)
 #define UART_FR_TXFF            0x00000020  // UART Transmit FIFO Full
 #define UART_FR_RXFE            0x00000010  // UART Receive FIFO Empty
+#define UART_FR_BUSY            0x00000008  // UART Busy, 0-Idle, 1-Busy
 #define UART_RX_FIFO_ONE_EIGHT  0x00000038  // UART Receive FIFO Interrupt Level at >= 1/8
 #define UART_TX_FIFO_SVN_EIGHT  0x00000007  // UART Transmit FIFO Interrupt Level at <= 7/8
 #define UART_LCRH_WLEN_8        0x00000060  // 8 bit word length
@@ -52,8 +53,8 @@
 #define NVIC_EN0_R      (*((volatile unsigned long *)0xE000E100))   // Interrupt 0-31 Set Enable Register
 #define NVIC_EN1_R      (*((volatile unsigned long *)0xE000E104))   // Interrupt 32-54 Set Enable Register
 
-#define BUSY 1  // Uart is busy
-#define IDLE 0  // Uart is idles
+#define BUSY 0x08  // Uart is busy
+#define IDLE 0x00  // Uart is idles
 
 void UART0_Init(void);
 void InterruptEnable(unsigned long InterruptIndex);
