@@ -70,13 +70,9 @@ void UART0_IntHandler(void)
         UART0_ICR_R |= UART_INT_TX;
         char data;
         if(DeQueue(OUTPUT, UART, &data)) // if output queue is not empty
-        {
             UART0_DR_R = data;
-        }
         else
-        {
             UART_STATUS = IDLE;
-        }
     }
 }
 

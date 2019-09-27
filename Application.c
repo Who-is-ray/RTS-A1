@@ -38,6 +38,9 @@ void OutputNewLine()
 {
     while(EnQueue(OUTPUT, UART, ENTER)==FALSE){}
     while(EnQueue(OUTPUT, UART, VERTICAL_TAB)==FALSE){}
+    //while(EnQueue(OUTPUT, UART, 27)==FALSE){}
+    //while(EnQueue(OUTPUT, UART, 91)==FALSE){}
+    //while(EnQueue(OUTPUT, UART, 67)==FALSE){}
 }
 
 void Run()
@@ -58,6 +61,7 @@ void Run()
        if(DeQueue(INPUT,&data.source,&data.value) == TRUE) // If input is not empty
        {
            char data_val=data.value;
+
            /*process the input*/
            if(data_val>=COMMON_CHAR_START && data_val<=COMMON_CHAR_END) // if data is common char
            {
@@ -93,7 +97,8 @@ void Run()
                str_counter = 0; // Clear the string
            }
 
-           if(is_echo == TRUE) // echo if need to
+           /*echo if need to*/
+           if(is_echo == TRUE)
            {
                while(EnQueue(OUTPUT, data.source, data.value)==FALSE){} // wait if output queue is full
                is_echo = FALSE;
