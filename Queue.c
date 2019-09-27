@@ -42,16 +42,18 @@ int EnQueue(enum QueueType t, enum Source s, char v)
         case OUTPUT:
         {
             head = OutQ.Head;
-            if(((head+1) & QSM1) != OutQ.Tail)  // if not full
+            if((head+1)&QSM1 != OutQ.Tail)  // if not full
             {
-                if((UART0_FR_R&UART_FR_BUSY) == BUSY)   // if uart is busy
+                if(UART_STATUS == BUSY) // if uart is busy
                 {
                     OutQ.queue[OutQ.Head].value = v;
                     OutQ.Head=(head+1)&QSM1;
                 }
                 else // uart not busy
+                {
+                    UART_STATUS = BUSY;
                     UART0_DR_R = v;
-
+                }
                 rtv = TRUE;
             }
             break;
