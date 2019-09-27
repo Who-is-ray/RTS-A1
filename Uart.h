@@ -22,7 +22,7 @@
 #define INT_VEC_UART0           5           // UART0 Rx and Tx interrupt index (decimal)
 #define UART_FR_TXFF            0x00000020  // UART Transmit FIFO Full
 #define UART_FR_RXFE            0x00000010  // UART Receive FIFO Empty
-#define UART_FR_BUSY            0x00000008  // UART Busy, 0-Idle, 1-Busy
+#define UART_FR_TXFE            0x00000080  // UART Busy, 0-Idle, 1-Busy
 #define UART_RX_FIFO_ONE_EIGHT  0x00000038  // UART Receive FIFO Interrupt Level at >= 1/8
 #define UART_TX_FIFO_SVN_EIGHT  0x00000007  // UART Transmit FIFO Interrupt Level at <= 7/8
 #define UART_LCRH_WLEN_8        0x00000060  // 8 bit word length

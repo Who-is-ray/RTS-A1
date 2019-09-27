@@ -38,6 +38,9 @@ void OutputNewLine()
 {
     while(EnQueue(OUTPUT, UART, ENTER)==FALSE){}
     while(EnQueue(OUTPUT, UART, VERTICAL_TAB)==FALSE){}
+    //while(EnQueue(OUTPUT, UART, 27)==FALSE){}
+    //while(EnQueue(OUTPUT, UART, 91)==FALSE){}
+    //while(EnQueue(OUTPUT, UART, 65)==FALSE){}
 }
 
 void Run()
