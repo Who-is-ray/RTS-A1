@@ -15,9 +15,16 @@
 #define ALARM_CMD_SIZE          5           // size of alarm cmd
 #define TIME_CMD_SIZE           4           // size of time cmd
 #define TIME_PARA_CMD_SIZE      15          // size of time cmd with parameter
+#define DATE_CMD_SIZE           4           // size of date cmd
+#define DATE_PARA_CMD_SIZE      15          // size of date cmd with parameter
 #define MAX_SEC                 59          // max value of second
 #define MAX_MIN                 59          // max value of minute
 #define MAX_HOUR                23          // max value of hour
+#define NUM_OF_MON              12          // number of month
+#define NUM_OF_CHAR_IN_MON      3           // number of letter in month
+#define MON_CHAR_3              2           // third char of month
+#define MON_CHAR_2              1           // third char of month
+#define MON_CHAR_1              0           // third char of month
 
 // ASCII Table Define
 #define COMMON_CHAR_START       32          // char can direct echo start from 32(' ')
@@ -32,6 +39,7 @@
 #define VERTICAL_TAB            11
 #define ENTER                   13
 #define SPACE                   32
+#define DASH                    45
 #define PERIOD                  46
 #define COLON                   58
 #define GREATER_THAN            62
@@ -42,11 +50,12 @@
 
 int t_sec,  //1/10 of second
     sec,    // second
-    min,    // second
-    hour,   //second
-    day,    //second
-    month,  //second
-    year = 0; // initialize local variables
+    min,    // minute
+    hour,   // hour
+    day,    // day
+    year = 0; // year
+char mon[]; //month
+const char mon_list[12][3]={"JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"}; // list of month
 
 //****************************************************************************
 //
@@ -63,12 +72,20 @@ void Initialization()
     Queue_Init();           // Initialize Queues
     InterruptEnable(INT_VEC_UART0);       // Enable UART0 interrupts
     UART0_IntEnable(UART_INT_RX | UART_INT_TX); // Enable Receive and Transmit interrupts
-    InterruptMasterEnable();      // Enable Master (CPU) Interrupts
+    InterruptMasterEnable();    // Enable Master (CPU) Interrupts
+    OutputPrefix();    // Output first pre-fix
 }
 
 void TransChar(char c)
 {
     while(EnQueue(OUTPUT, UART, c)==FALSE){}
+}
+
+/*Output pre-fix: '> '*/
+void OutputPrefix()
+{
+    TransChar(GREATER_THAN);
+    TransChar(SPACE);
 }
 
 /*Move cursor to new line*/
@@ -82,6 +99,14 @@ void OutputNewLine()
 int IsNumber(char c)
 {
     if(c>=NUMBER_START && c<=NUMBER_END)
+        return TRUE;
+    return FALSE;
+}
+
+/*Indicate if the character is an upper case letter*/
+int IsUCLetter(char c)
+{
+    if(c>=ALPHABET_UC_START && c<=ALPHABET_UC_END)
         return TRUE;
     return FALSE;
 }
@@ -173,6 +198,188 @@ int DecodeTime(char str[], int count)
     return TRUE;
 }
 
+/*Decoding the time from command
+ * return true if invalid*/
+int DecodeDate(char str[], int count)
+{
+    if(IsNumber(str[count-1])) // test last bit: ones digit of year
+    {
+        year = str[count-1] - NUMBER_START;
+        count--;
+    }
+    else // if invalid
+        return TRUE;
+
+    if(IsNumber(str[count-1])) // test last second bit: tens digit of year
+    {
+        year += (str[count-1] - NUMBER_START)*10;
+        count--;
+    }
+    else // if invalid
+        return TRUE;
+
+    if(IsNumber(str[count-1])) // test last thrid bit: hundreds digit of year
+    {
+        year += (str[count-1] - NUMBER_START)*100;
+        count--;
+    }
+    else // if invalid
+        return TRUE;
+
+    if(IsNumber(str[count-1])) // test last forth bit: thousands digit of year
+    {
+        year += (str[count-1] - NUMBER_START)*1000;
+        count--;
+    }
+    else // if invalid
+        return TRUE;
+
+    if(str[count-1] == DASH) // test last fifth bit: dash
+        count--;
+    else // if invalid
+        return TRUE;
+
+    if(IsUCLetter(str[count-1])) // test last sixth bit: last char of month
+    {
+        month[MON_CHAR_3] = str[count-1];
+        count--;
+    }
+    else // if invalid
+        return TRUE;
+
+    if(IsUCLetter(str[count-1])) // test last seventh bit: second char of month
+    {
+        month[MON_CHAR_2] = str[count-1];
+        count--;
+    }
+    else // if invalid
+        return TRUE;
+
+    if(IsUCLetter(str[count-1])) // test last eighth bit: first char of month
+    {
+        int not_match = TRUE; // flag to indicate if month exist
+        month[MON_CHAR_1] = str[count-1];
+        for(int i=0; i<NUM_OF_MON; i++) // find month in month list
+        {
+            if(strcmp(month, mon_list[]) == EQUAL) // if find in month list
+            {
+                not_match = FALSE;
+                break;
+            }
+        }
+        if(not_match) // if not a valid month
+            return TRUE;
+        count--;
+    }
+    else // if invalid
+        return TRUE;
+}
+
+void CheckInputQueue()
+{
+    /* Input data - xmit directly */
+    struct QueueData data;
+    if(DeQueue(INPUT,&data.source,&data.value) == TRUE) // If input is not empty
+    {
+       char data_val=data.value;
+       int has_error = FALSE; // flag indicate if cmd has error
+
+       /*process the input*/
+       if(is_ESC_seq == TRUE)   // if is a part of ESC sequence
+       {
+           char data_val_uc = data_val & ALPHABET_CASE_OFFSET;    // convert to upper case letter
+           if(data_val_uc>=ALPHABET_UC_START && data_val_uc<=ALPHABET_UC_END)
+               is_ESC_seq = FALSE;  // most case ESC sequences ended with a letter
+           need_echo = TRUE;
+       }
+       else if(data_val>=COMMON_CHAR_START && data_val<=COMMON_CHAR_END) // if data is common char
+       {
+           if(str_counter<STRING_SIZE) // if string not full
+           {
+               // store to string and echo back
+               if( data_val>=ALPHABET_LC_START && data_val<=ALPHABET_LC_END ) // if is a lower case letter
+                   data_val &= ALPHABET_CASE_OFFSET;    // convert to upper case letter
+
+               str[str_counter]=data_val;
+               str_counter++;
+               need_echo = TRUE;
+           }
+       }
+       else if(data_val == BACKSPACE)   // if data is backspace
+       {
+           if(str_counter >0)    // if string not empty
+           {
+               str_counter--;   // remove last bit from string
+               need_echo = TRUE;
+           }
+       }
+       else if(data_val == ENTER)   // if data is enter
+       {
+           OutputNewLine(); // change to new line
+
+           /* Process the string */
+           if (strncmp(str, "TIME", TIME_CMD_SIZE)==EQUAL) // if start with 'TIME'
+           {
+               if(str_counter == TIME_CMD_SIZE)// if has no parameter
+               {
+                   // if time has set, output time
+
+                   // if time not set, output error
+               }
+               else if (str_counter == TIME_PARA_CMD_SIZE) // if has parameters
+               {
+                   has_error = DecodeTime(str,str_counter);
+                   if(has_error == FALSE)
+                   {
+                       // set to systick
+                   }
+               }
+               else // error
+                   has_error = TRUE;
+           }
+           else if (strncmp(str, "DATE", DATE_CMD_SIZE)==EQUAL) // if start with 'DATE'
+           {
+               if(str_counter == DATE_CMD_SIZE)// if has no parameter
+               {
+                   // if date has set, output time
+
+                   // if date not set, output error
+               }
+               else if (str_counter == DATE_PARA_CMD_SIZE) // if has parameters
+               {
+                   has_error = DecodeTime(str,str_counter);
+                   if(has_error == FALSE)
+                   {
+                       // set to systick
+                   }
+               }
+               else // error
+                   has_error = TRUE;
+           }
+
+           str_counter = 0; // clear the string
+       }
+       else if(data_val == ESC) // if data is ESC
+       {
+           is_ESC_seq = TRUE;
+           need_echo = TRUE;
+       }
+
+       /*After processed command*/
+       if(need_echo) // echo if need to
+       {
+           TransChar(data.value); // echo back
+           need_echo = FALSE;
+       }
+       else if(has_error) // report error
+       {
+           TransChar(QUESTION_MARK);
+           OutputNewLine();
+           OutputPrefix();
+       }
+    }
+}
+
 //****************************************************************************
 //
 // Public functions
@@ -184,9 +391,6 @@ void Run()
 {
     Initialization();
 
-    // for testing, ">" sign
-    UART0_DR_R = 62;
-
     /*Local variables*/
     char str[STRING_SIZE];  // command string
     int str_counter = 0;    // command string letter counter
@@ -195,87 +399,7 @@ void Run()
 
     while(1)
     {
-       /* Input data - xmit directly */
-       struct QueueData data;
-       if(DeQueue(INPUT,&data.source,&data.value) == TRUE) // If input is not empty
-       {
-           char data_val=data.value;
-           int has_error = FALSE; // flag indicate if cmd has error
-
-           /*process the input*/
-           if(is_ESC_seq == TRUE)   // if is a part of ESC sequence
-           {
-               char data_val_uc = data_val & ALPHABET_CASE_OFFSET;    // convert to upper case letter
-               if(data_val_uc>=ALPHABET_UC_START && data_val_uc<=ALPHABET_UC_END)
-                   is_ESC_seq = FALSE;  // most case ESC sequences ended with a letter
-               need_echo = TRUE;
-           }
-           else if(data_val>=COMMON_CHAR_START && data_val<=COMMON_CHAR_END) // if data is common char
-           {
-               if(str_counter<STRING_SIZE) // if string not full
-               {
-                   // store to string and echo back
-                   if( data_val>=ALPHABET_LC_START && data_val<=ALPHABET_LC_END ) // if is a lower case letter
-                       data_val &= ALPHABET_CASE_OFFSET;    // convert to upper case letter
-
-                   str[str_counter]=data_val;
-                   str_counter++;
-                   need_echo = TRUE;
-               }
-           }
-           else if(data_val == BACKSPACE)   // if data is backspace
-           {
-               if(str_counter >0)    // if string not empty
-               {
-                   str_counter--;   // remove last bit from string
-                   need_echo = TRUE;
-               }
-           }
-           else if(data_val == ENTER)   // if data is enter
-           {
-               OutputNewLine(); // change to new line
-
-               /* Process the string */
-               if (strncmp(str, "TIME", 4)==EQUAL) // if start with 'TIME'
-               {
-                   if(str_counter == TIME_CMD_SIZE)// if has no parameter
-                   {
-                       // if time has set, output time
-
-                       // if time not set, output error
-                   }
-                   else if (str_counter == TIME_PARA_CMD_SIZE) // if has parameters
-                   {
-                       has_error = DecodeTime(str,str_counter);
-                       if(has_error == FALSE)
-                       {
-                           // set to systick
-                       }
-                   }
-                   else // error
-                       has_error = TRUE;
-               }
-
-               str_counter = 0; // clear the string
-           }
-           else if(data_val == ESC) // if data is ESC
-           {
-               is_ESC_seq = TRUE;
-               need_echo = TRUE;
-           }
-
-           /*After processed command*/
-           if(need_echo) // echo if need to
-           {
-               TransChar(data.value); // echo back
-               need_echo = FALSE;
-           }
-           else if(has_error) // report error
-           {
-               TransChar(QUESTION_MARK);
-               OutputNewLine();
-
-           }
-       }
+        CheckInputQueue();
+        // CheckAlarm();
     }
 }
