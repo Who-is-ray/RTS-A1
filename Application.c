@@ -9,6 +9,7 @@
 #include "Application.h"
 #include "Queue.h"
 #include "Uart.h"
+#include "Systick.h"
 
 #define STRING_SIZE             64          // size of string to store
 #define ALARM_PARA_CMD_SIZE     16          // size of alarm cmd with parameter
@@ -18,13 +19,7 @@
 #define DATE_CMD_SIZE           4           // size of date cmd
 #define DATE_PARA_CMD_SIZE1     15          // size of date cmd with parameter of 1 digit date
 #define DATE_PARA_CMD_SIZE2     16          // size of date cmd with parameter of 2 digits date
-#define MAX_SEC                 59          // max value of second
-#define MAX_MIN                 59          // max value of minute
-#define MAX_HOUR                23          // max value of hour
-#define NUM_OF_MON              12          // number of month
 #define NUM_OF_CHAR_IN_MON      3           // number of letter in month
-#define NUM_TYPE_OF_MON         2           // leap year month and normal year month
-#define LEAP_YEAR_PERIOD        4           // leap year period
 
 // ASCII Table Define
 #define COMMON_CHAR_START       32          // char can direct echo start from 32(' ')
@@ -48,6 +43,8 @@
 #define ESC                     27
 #define EQUAL                   0
 
+extern Systick_Clock clock;
+
 char str[STRING_SIZE];  // command string
 int str_counter = 0;    // command string letter counter
 int is_ESC_seq = FALSE; // flag to indicate if is ESC sequences
@@ -60,15 +57,6 @@ int t_sec,  //1/10 of second
     year = 0; // year
 char mon_str[NUM_OF_CHAR_IN_MON]; //month string
 const char mon_list[NUM_OF_MON][NUM_OF_CHAR_IN_MON]={"JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"}; // list of month
-const int days_list[NUM_TYPE_OF_MON][NUM_OF_MON] = {  // list of possible day list
-                              {31,28,31,30,31,30,31,31,30,31,30,31}, // list of days in month,days_in_month_ly
-                              {31,29,31,30,31,30,31,31,30,31,30,31}}; // list of days in month in leap year
-
-//****************************************************************************
-//
-// External declarations for the interrupt handlers used by the application.
-//
-//*****************************************************************************
 
 /* Transmit a character*/
 void TransChar(char c)
@@ -113,12 +101,6 @@ int IsUCLetter(char c)
     if(c>=ALPHABET_UC_START && c<=ALPHABET_UC_END)
         return TRUE;
     return FALSE;
-}
-
-/*Check if date valid*/
-int IsDateVaild(int y/*year*/, int m/*month*/, int d/*day*/)
-{
-    return ((days_list[(y%LEAP_YEAR_PERIOD)>0? FALSE:TRUE][m-1])<d)? FALSE:TRUE;
 }
 
 /* Decoding the time from command
@@ -318,108 +300,115 @@ void CheckInputQueue()
     QueueData data;
     if(DeQueue(INPUT,&data.source,&data.value) == TRUE) // If input is not empty
     {
-       char data_val=data.value;
-       int has_error = FALSE; // flag indicate if cmd has error
+        if(data.source == UART) // if is UART
+        {
+            char data_val=data.value;
+            int has_error = FALSE; // flag indicate if cmd has error
 
-       /*process the input*/
-       if(is_ESC_seq == TRUE)   // if is a part of ESC sequence
-       {
-           char data_val_uc = data_val & ALPHABET_CASE_OFFSET;    // convert to upper case letter
-           if(data_val_uc>=ALPHABET_UC_START && data_val_uc<=ALPHABET_UC_END)
-               is_ESC_seq = FALSE;  // most case ESC sequences ended with a letter
-           need_echo = TRUE;
-       }
-       else if(data_val>=COMMON_CHAR_START && data_val<=COMMON_CHAR_END) // if data is common char
-       {
-           if(str_counter<STRING_SIZE) // if string not full
-           {
-               // store to string and echo back
-               if((data_val>=ALPHABET_LC_START) && (data_val<=ALPHABET_LC_END)) // if is a lower case letter
-                   data_val &= ALPHABET_CASE_OFFSET;    // convert to upper case letter
-
-               str[str_counter]=data_val;
-               str_counter++;
+            /*process the input*/
+            if(is_ESC_seq == TRUE)   // if is a part of ESC sequence
+            {
+               char data_val_uc = data_val & ALPHABET_CASE_OFFSET;    // convert to upper case letter
+               if(data_val_uc>=ALPHABET_UC_START && data_val_uc<=ALPHABET_UC_END)
+                   is_ESC_seq = FALSE;  // most case ESC sequences ended with a letter
                need_echo = TRUE;
-           }
-       }
-       else if(data_val == BACKSPACE)   // if data is backspace
-       {
-           if(str_counter >0)    // if string not empty
-           {
-               str_counter--;   // remove last bit from string
+            }
+            else if(data_val>=COMMON_CHAR_START && data_val<=COMMON_CHAR_END) // if data is common char
+            {
+               if(str_counter<STRING_SIZE) // if string not full
+               {
+                   // store to string and echo back
+                   if((data_val>=ALPHABET_LC_START) && (data_val<=ALPHABET_LC_END)) // if is a lower case letter
+                       data_val &= ALPHABET_CASE_OFFSET;    // convert to upper case letter
+
+                   str[str_counter]=data_val;
+                   str_counter++;
+                   need_echo = TRUE;
+               }
+            }
+            else if(data_val == BACKSPACE)   // if data is backspace
+            {
+               if(str_counter >0)    // if string not empty
+               {
+                   str_counter--;   // remove last bit from string
+                   need_echo = TRUE;
+               }
+            }
+            else if(data_val == ENTER)   // if data is enter
+            {
+               OutputNewLine(); // change to new line
+               int count = str_counter; // save string count to local
+               str_counter = 0; // reset the string counter
+
+               /* Process the string */
+               if (strncmp(str, "TIME", TIME_CMD_SIZE)==EQUAL) // if start with 'TIME'
+               {
+                   if(count == TIME_CMD_SIZE)// if has no parameter
+                   {
+                       // if time has set, output time
+
+                       // if time not set, output error
+                   }
+                   else if (count == TIME_PARA_CMD_SIZE) // if has parameters
+                   {
+                       has_error = DecodeTime(str,count);
+                       if(has_error == FALSE)
+                       {
+                           // set to systick
+
+                           OutputNewLinePrefix();
+                           return;
+                       }
+                   }
+                   else // error
+                       has_error = TRUE;
+               }
+               else if (strncmp(str, "DATE", DATE_CMD_SIZE)==EQUAL) // if start with 'DATE'
+               {
+                   if(count == DATE_CMD_SIZE)// if has no parameter
+                   {
+                       // if date has set, output time
+
+                       // if date not set, output error
+                   }
+                   else if ((count == DATE_PARA_CMD_SIZE1) || (count == DATE_PARA_CMD_SIZE2)) // if has parameters
+                   {
+                       has_error = DecodeDate(str,count);
+                       if(has_error == FALSE)
+                       {
+                           // set to systick
+
+                           OutputNewLinePrefix();
+                           return;
+                       }
+                   }
+                   else // error
+                       has_error = TRUE;
+               }
+            }
+            else if(data_val == ESC) // if data is ESC
+            {
+               is_ESC_seq = TRUE;
                need_echo = TRUE;
-           }
-       }
-       else if(data_val == ENTER)   // if data is enter
-       {
-           OutputNewLine(); // change to new line
-           int count = str_counter; // save string count to local
-           str_counter = 0; // reset the string counter
+            }
 
-           /* Process the string */
-           if (strncmp(str, "TIME", TIME_CMD_SIZE)==EQUAL) // if start with 'TIME'
-           {
-               if(count == TIME_CMD_SIZE)// if has no parameter
-               {
-                   // if time has set, output time
-
-                   // if time not set, output error
-               }
-               else if (count == TIME_PARA_CMD_SIZE) // if has parameters
-               {
-                   has_error = DecodeTime(str,count);
-                   if(has_error == FALSE)
-                   {
-                       // set to systick
-
-                       OutputNewLinePrefix();
-                       return;
-                   }
-               }
-               else // error
-                   has_error = TRUE;
-           }
-           else if (strncmp(str, "DATE", DATE_CMD_SIZE)==EQUAL) // if start with 'DATE'
-           {
-               if(count == DATE_CMD_SIZE)// if has no parameter
-               {
-                   // if date has set, output time
-
-                   // if date not set, output error
-               }
-               else if ((count == DATE_PARA_CMD_SIZE1) || (count == DATE_PARA_CMD_SIZE2)) // if has parameters
-               {
-                   has_error = DecodeDate(str,count);
-                   if(has_error == FALSE)
-                   {
-                       // set to systick
-
-                       OutputNewLinePrefix();
-                       return;
-                   }
-               }
-               else // error
-                   has_error = TRUE;
-           }
-       }
-       else if(data_val == ESC) // if data is ESC
-       {
-           is_ESC_seq = TRUE;
-           need_echo = TRUE;
-       }
-
-       /*After processed command*/
-       if(need_echo) // echo if need to
-       {
-           TransChar(data.value); // echo back
-           need_echo = FALSE;
-       }
-       else if(has_error) // report error
-       {
-           TransChar(QUESTION_MARK);
-           OutputNewLine();
-           OutputString("> ");
-       }
+            /*After processed command*/
+            if(need_echo) // echo if need to
+            {
+               TransChar(data.value); // echo back
+               need_echo = FALSE;
+            }
+            else if(has_error) // report error
+            {
+               TransChar(QUESTION_MARK);
+               OutputNewLine();
+               OutputString("> ");
+            }
+        }
+        else // if is systick
+        {
+            Tick();
+        }
     }
 }
 

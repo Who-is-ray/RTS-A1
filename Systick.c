@@ -7,15 +7,21 @@
 
 #include "Systick.h"
 #include "Queue.h"
+#include "Uart.h"
 
-Systick_Clock Systick_clock = {.alarm_cd    = DISABLED,
-                               .day         = 1,
-                               .month       = 9,
-                               .year        = 2019,
-                               .hour        = 0,
-                               .min         = 0,
-                               .sec         = 0,
-                               .t_sec       =0};
+const int days_list[NUM_TYPE_OF_MON][NUM_OF_MON] = {  // list of possible day list
+                              {31,28,31,30,31,30,31,31,30,31,30,31}, // list of days in month,days_in_month_ly
+                              {31,29,31,30,31,30,31,31,30,31,30,31}}; // list of days in month in leap year
+
+
+volatile Systick_Clock clock = {.alarm_cd    = DISABLED,
+                                .day         = 1,
+                                .month       = 9,
+                                .year        = 2019,
+                                .hour        = 0,
+                                .min         = 0,
+                                .sec         = 0,
+                                .t_sec       =0};
 
 void SysTickStart(void)
 {
@@ -59,4 +65,43 @@ void SysTickInit()
     SysTickPeriod(MAX_WAIT);
     SysTickIntEnable();
     SysTickStart();
+}
+
+int IsDateVaild(int y/*year*/, int m/*month*/, int d/*day*/)
+{
+    return ((days_list[(y%LEAP_YEAR_PERIOD)>0? FALSE:TRUE][m-1])<d)? FALSE:TRUE;
+}
+
+void IncreaseDate()
+{
+    if((days_list[(clock.year%LEAP_YEAR_PERIOD)>0? FALSE:TRUE][clock.month-1]) == clock.day)
+    {
+        clock.day =0;
+        if(clock.month == NUM_OF_MON)
+        {
+            clock.month = 0;
+            clock.year++;
+        }
+    }
+}
+
+void Tick()
+{
+    if(clock.t_sec == MAX_T_SEC)
+    {
+        clock.t_sec = 0;
+        if (clock.sec == MAX_SEC)
+        {
+            clock.sec = 0;
+            if(clock.min == MAX_MIN)
+            {
+                clock.min = 0;
+                if (clock.hour == MAX_HOUR)
+                {
+                    clock.hour = 0;
+                    IncreaseDate();
+                }
+            }
+        }
+    }
 }

@@ -23,6 +23,13 @@
 // Maximum period
 #define MAX_WAIT            1677721     // 1/10 second
 
+#define MAX_T_SEC           9           // max value of 1/10 second
+#define MAX_SEC             59          // max value of second
+#define MAX_MIN             59          // max value of minute
+#define MAX_HOUR            23          // max value of hour
+#define NUM_OF_MON          12          // number of month
+#define NUM_TYPE_OF_MON     2           // leap year month and normal year month
+#define LEAP_YEAR_PERIOD    4           // leap year period
 #define DISABLED            -1
 #define NULL                0
 
@@ -33,10 +40,12 @@ typedef struct {
         hour,   // hour
         day,    // day
         month,  // month integer
-        year; // year
+        year;   // year
     int alarm_cd; // alarm count down
 } Systick_Clock; // Clock elements
 
-void SYstickInit(); // initialization
+void SysTickInit(); // initialization
+void Tick(); // clock tick, t_sec++
+int IsDateVaild(int y/*year*/, int m/*month*/, int d/*day*/); //Check if date valid
 
 #endif /* SYSTICK_H_ */

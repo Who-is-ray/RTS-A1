@@ -19,7 +19,7 @@ typedef enum
 {
     UART,
     SYSTICK
-}Source;
+} Source;
 
 /* The name of queue
  * Only two queues exist
@@ -28,7 +28,7 @@ typedef enum
 {
     INPUT,
     OUTPUT
-}QueueType;
+} QueueType;
 
 /* Structure of data in queue
  * include Source of data and value of data
@@ -38,7 +38,7 @@ typedef struct
 {
     Source source;
     char value;
-}QueueData;
+} QueueData;
 
 /* Structure of queue*/
 typedef struct
@@ -46,7 +46,7 @@ typedef struct
     int Head; // the head of queue
     int Tail; // the tail of queue
     QueueData queue[QUEUESIZE];  // the queue stores data
-}Queue;
+} Queue;
 
 void Queue_Init();  // Initialize input queue and output queue by setting the head and tail to 0
 int EnQueue(QueueType t, Source s, char v);   //Enqueue a data to a queue
