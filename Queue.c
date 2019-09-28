@@ -10,8 +10,8 @@
 
 extern int UART_STATUS;
 
-struct Queue InQ;
-struct Queue OutQ;
+Queue InQ;
+Queue OutQ;
 
 void Queue_Init()
 {
@@ -21,7 +21,7 @@ void Queue_Init()
     OutQ.Tail=0;
 }
 
-int EnQueue(enum QueueType t, enum Source s, char v)
+int EnQueue(QueueType t, Source s, char v)
 {
     int head;
     int rtv = FALSE;    // return value
@@ -62,7 +62,7 @@ int EnQueue(enum QueueType t, enum Source s, char v)
     return rtv;
 }
 
-int DeQueue(enum QueueType t, enum Source* s, char* v)
+int DeQueue(QueueType t, Source* s, char* v)
 {
     int tail;
     switch (t)

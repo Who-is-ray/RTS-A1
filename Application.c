@@ -25,6 +25,7 @@
 #define NUM_OF_CHAR_IN_MON      3           // number of letter in month
 #define NUM_TYPE_OF_MON         2           // leap year month and normal year month
 #define LEAP_YEAR_PERIOD        4           // leap year period
+
 // ASCII Table Define
 #define COMMON_CHAR_START       32          // char can direct echo start from 32(' ')
 #define COMMON_CHAR_END         126         // char can direct echo end at 126('~')
@@ -314,7 +315,7 @@ void CheckInputQueue()
     int need_echo = FALSE;    // flag to indicate if ehco back
 
     /* Input data - xmit directly */
-    struct QueueData data;
+    QueueData data;
     if(DeQueue(INPUT,&data.source,&data.value) == TRUE) // If input is not empty
     {
        char data_val=data.value;
