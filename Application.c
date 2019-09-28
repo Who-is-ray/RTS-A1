@@ -16,15 +16,13 @@
 #define TIME_CMD_SIZE           4           // size of time cmd
 #define TIME_PARA_CMD_SIZE      15          // size of time cmd with parameter
 #define DATE_CMD_SIZE           4           // size of date cmd
-#define DATE_PARA_CMD_SIZE      15          // size of date cmd with parameter
+#define DATE_PARA_CMD_SIZE1     14          // size of date cmd with parameter of 1 digit date
+#define DATE_PARA_CMD_SIZE2     15          // size of date cmd with parameter of 2 digits date
 #define MAX_SEC                 59          // max value of second
 #define MAX_MIN                 59          // max value of minute
 #define MAX_HOUR                23          // max value of hour
 #define NUM_OF_MON              12          // number of month
 #define NUM_OF_CHAR_IN_MON      3           // number of letter in month
-#define MON_CHAR_3              2           // third char of month
-#define MON_CHAR_2              1           // third char of month
-#define MON_CHAR_1              0           // third char of month
 
 // ASCII Table Define
 #define COMMON_CHAR_START       32          // char can direct echo start from 32(' ')
@@ -63,39 +61,27 @@ const char mon_list[12][3]={"JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP
 //
 //*****************************************************************************
 
-/* Initialization Uart, Systick and Queues
- * Enable interrupts*/
-void Initialization()
-{
-    /* Initialize UART */
-    UART0_Init();           // Initialize UART0
-    Queue_Init();           // Initialize Queues
-    InterruptEnable(INT_VEC_UART0);       // Enable UART0 interrupts
-    UART0_IntEnable(UART_INT_RX | UART_INT_TX); // Enable Receive and Transmit interrupts
-    InterruptMasterEnable();    // Enable Master (CPU) Interrupts
-    OutputPrefix();    // Output first pre-fix
-}
-
+/* Transmit a character*/
 void TransChar(char c)
 {
     while(EnQueue(OUTPUT, UART, c)==FALSE){}
 }
 
-/*Output pre-fix: '> '*/
+/* Output pre-fix: '> '*/
 void OutputPrefix()
 {
     TransChar(GREATER_THAN);
     TransChar(SPACE);
 }
 
-/*Move cursor to new line*/
+/* Move cursor to new line*/
 void OutputNewLine()
 {
     TransChar(ENTER);
     TransChar(VERTICAL_TAB);
 }
 
-/*Indicate if the character is a number*/
+/* Indicate if the character is a number*/
 int IsNumber(char c)
 {
     if(c>=NUMBER_START && c<=NUMBER_END)
@@ -103,7 +89,7 @@ int IsNumber(char c)
     return FALSE;
 }
 
-/*Indicate if the character is an upper case letter*/
+/* Indicate if the character is an upper case letter*/
 int IsUCLetter(char c)
 {
     if(c>=ALPHABET_UC_START && c<=ALPHABET_UC_END)
@@ -111,7 +97,13 @@ int IsUCLetter(char c)
     return FALSE;
 }
 
-/*Decoding the time from command
+/*Check if date valid*/
+int IsDateVaild()
+{
+
+}
+
+/* Decoding the time from command
  * return true if invalid*/
 int DecodeTime(char str[], int count)
 {
@@ -198,7 +190,7 @@ int DecodeTime(char str[], int count)
     return TRUE;
 }
 
-/*Decoding the time from command
+/* Decoding the time from command
  * return true if invalid*/
 int DecodeDate(char str[], int count)
 {
@@ -239,44 +231,72 @@ int DecodeDate(char str[], int count)
     else // if invalid
         return TRUE;
 
-    if(IsUCLetter(str[count-1])) // test last sixth bit: last char of month
+    int i;
+    for(i=0; i<NUM_OF_MON; i++) // read month
     {
-        month[MON_CHAR_3] = str[count-1];
+        mon[i] = str[count-1];
         count--;
     }
-    else // if invalid
-        return TRUE;
-
-    if(IsUCLetter(str[count-1])) // test last seventh bit: second char of month
+    int not_match = TRUE; // flag to indicate if month exist
+    for(i=0; i<NUM_OF_MON; i++) // find month in month list
     {
-        month[MON_CHAR_2] = str[count-1];
-        count--;
-    }
-    else // if invalid
-        return TRUE;
-
-    if(IsUCLetter(str[count-1])) // test last eighth bit: first char of month
-    {
-        int not_match = TRUE; // flag to indicate if month exist
-        month[MON_CHAR_1] = str[count-1];
-        for(int i=0; i<NUM_OF_MON; i++) // find month in month list
+        if(strcmp(mon, mon_list[i]) == EQUAL) // if find in month list
         {
-            if(strcmp(month, mon_list[]) == EQUAL) // if find in month list
-            {
-                not_match = FALSE;
-                break;
-            }
+            not_match = FALSE;
+            break;
         }
-        if(not_match) // if not a valid month
-            return TRUE;
+    }
+    if(not_match) // if not a valid month
+        return TRUE;
+
+    if(str[count-1] == DASH) // test last ninth bit: dash
+        count--;
+    else // if invalid
+        return TRUE;
+
+    if(IsNumber(str[count-1])) // test last tenth bit: last digit of date
+    {
+        day += str[count-1] - NUMBER_START;
         count--;
     }
     else // if invalid
         return TRUE;
+
+    if(IsNumber(str[count-1])) // test last eleventh bit: first digit of date
+    {
+        day += (str[count-1] - NUMBER_START)*10;
+        // if() // check if date valid
+        count--;
+        if(str[count-1] == SPACE) // test last twelfth bit: space
+            return FALSE;
+    }
+    else if(str[count-1] == SPACE || strlen(str)==DATE_PARA_CMD_SIZE1) // test last eleventh bit: space
+        return FALSE;
+    return TRUE;
 }
 
+/* Initialization Uart, Systick and Queues
+ * Enable interrupts*/
+void Initialization()
+{
+    /* Initialize UART */
+    UART0_Init();           // Initialize UART0
+    Queue_Init();           // Initialize Queues
+    InterruptEnable(INT_VEC_UART0);       // Enable UART0 interrupts
+    UART0_IntEnable(UART_INT_RX | UART_INT_TX); // Enable Receive and Transmit interrupts
+    InterruptMasterEnable();    // Enable Master (CPU) Interrupts
+    OutputPrefix();    // Output first pre-fix
+}
+/* check if input queue has data to process
+ * process if has*/
 void CheckInputQueue()
 {
+    /*Local variables*/
+    char str[STRING_SIZE];  // command string
+    int str_counter = 0;    // command string letter counter
+    int need_echo = FALSE;    // flag to indicate if ehco back
+    int is_ESC_seq = FALSE; // flag to indicate if is ESC sequences
+
     /* Input data - xmit directly */
     struct QueueData data;
     if(DeQueue(INPUT,&data.source,&data.value) == TRUE) // If input is not empty
@@ -345,9 +365,9 @@ void CheckInputQueue()
 
                    // if date not set, output error
                }
-               else if (str_counter == DATE_PARA_CMD_SIZE) // if has parameters
+               else if (str_counter == DATE_PARA_CMD_SIZE1 || str_counter == DATE_PARA_CMD_SIZE2) // if has parameters
                {
-                   has_error = DecodeTime(str,str_counter);
+                   has_error = DecodeDate(str,str_counter);
                    if(has_error == FALSE)
                    {
                        // set to systick
@@ -386,16 +406,10 @@ void CheckInputQueue()
 //
 //*****************************************************************************
 
-/*Run application*/
+/* Run application*/
 void Run()
 {
     Initialization();
-
-    /*Local variables*/
-    char str[STRING_SIZE];  // command string
-    int str_counter = 0;    // command string letter counter
-    int need_echo = FALSE;    // flag to indicate if ehco back
-    int is_ESC_seq = FALSE; // flag to indicate if is ESC sequences
 
     while(1)
     {
