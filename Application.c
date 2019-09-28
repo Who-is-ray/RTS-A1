@@ -16,14 +16,15 @@
 #define TIME_CMD_SIZE           4           // size of time cmd
 #define TIME_PARA_CMD_SIZE      15          // size of time cmd with parameter
 #define DATE_CMD_SIZE           4           // size of date cmd
-#define DATE_PARA_CMD_SIZE1     14          // size of date cmd with parameter of 1 digit date
-#define DATE_PARA_CMD_SIZE2     15          // size of date cmd with parameter of 2 digits date
+#define DATE_PARA_CMD_SIZE1     15          // size of date cmd with parameter of 1 digit date
+#define DATE_PARA_CMD_SIZE2     16          // size of date cmd with parameter of 2 digits date
 #define MAX_SEC                 59          // max value of second
 #define MAX_MIN                 59          // max value of minute
 #define MAX_HOUR                23          // max value of hour
 #define NUM_OF_MON              12          // number of month
 #define NUM_OF_CHAR_IN_MON      3           // number of letter in month
-
+#define NUM_TYPE_OF_MON         2           // leap year month and normal year month
+#define LEAP_YEAR_PERIOD        4           // leap year period
 // ASCII Table Define
 #define COMMON_CHAR_START       32          // char can direct echo start from 32(' ')
 #define COMMON_CHAR_END         126         // char can direct echo end at 126('~')
@@ -46,14 +47,21 @@
 #define ESC                     27
 #define EQUAL                   0
 
+char str[STRING_SIZE];  // command string
+int str_counter = 0;    // command string letter counter
+int is_ESC_seq = FALSE; // flag to indicate if is ESC sequences
 int t_sec,  //1/10 of second
     sec,    // second
     min,    // minute
     hour,   // hour
     day,    // day
+    mon_int,// month integer
     year = 0; // year
-char mon[]; //month
-const char mon_list[12][3]={"JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"}; // list of month
+char mon_str[NUM_OF_CHAR_IN_MON]; //month string
+const char mon_list[NUM_OF_MON][NUM_OF_CHAR_IN_MON]={"JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"}; // list of month
+const int days_list[NUM_TYPE_OF_MON][NUM_OF_MON] = {  // list of possible day list
+                              {31,28,31,30,31,30,31,31,30,31,30,31}, // list of days in month,days_in_month_ly
+                              {31,29,31,30,31,30,31,31,30,31,30,31}}; // list of days in month in leap year
 
 //****************************************************************************
 //
@@ -64,14 +72,15 @@ const char mon_list[12][3]={"JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP
 /* Transmit a character*/
 void TransChar(char c)
 {
-    while(EnQueue(OUTPUT, UART, c)==FALSE){}
+    while(EnQueue(OUTPUT, UART, c)==FALSE);
 }
 
-/* Output pre-fix: '> '*/
-void OutputPrefix()
+/* Output a string*/
+void OutputString(const char* s)
 {
-    TransChar(GREATER_THAN);
-    TransChar(SPACE);
+    int i;
+    for(i = 0; i <= strlen(s); i++) // output each character in string
+        {while(EnQueue(OUTPUT, UART, s[i])==FALSE);}
 }
 
 /* Move cursor to new line*/
@@ -79,6 +88,14 @@ void OutputNewLine()
 {
     TransChar(ENTER);
     TransChar(VERTICAL_TAB);
+}
+
+/* Move cursor to new line and output prefix*/
+void OutputNewLinePrefix()
+{
+    TransChar(ENTER);
+    TransChar(VERTICAL_TAB);
+    OutputString("> ");
 }
 
 /* Indicate if the character is a number*/
@@ -98,9 +115,9 @@ int IsUCLetter(char c)
 }
 
 /*Check if date valid*/
-int IsDateVaild()
+int IsDateVaild(int y/*year*/, int m/*month*/, int d/*day*/)
 {
-
+    return ((days_list[(y%LEAP_YEAR_PERIOD)>0? FALSE:TRUE][m-1])<d)? FALSE:TRUE;
 }
 
 /* Decoding the time from command
@@ -232,15 +249,15 @@ int DecodeDate(char str[], int count)
         return TRUE;
 
     int i;
-    for(i=0; i<NUM_OF_MON; i++) // read month
+    for(i=NUM_OF_CHAR_IN_MON-1; i>=0; i--) // read month
     {
-        mon[i] = str[count-1];
+        mon_str[i] = str[count-1];
         count--;
     }
     int not_match = TRUE; // flag to indicate if month exist
-    for(i=0; i<NUM_OF_MON; i++) // find month in month list
+    for(mon_int=1; mon_int<=NUM_OF_MON; mon_int++) // find month in month list
     {
-        if(strcmp(mon, mon_list[i]) == EQUAL) // if find in month list
+        if(strncmp(mon_str, mon_list[mon_int-1],NUM_OF_CHAR_IN_MON) == EQUAL) // if find in month list
         {
             not_match = FALSE;
             break;
@@ -256,7 +273,7 @@ int DecodeDate(char str[], int count)
 
     if(IsNumber(str[count-1])) // test last tenth bit: last digit of date
     {
-        day += str[count-1] - NUMBER_START;
+        day = str[count-1] - NUMBER_START;
         count--;
     }
     else // if invalid
@@ -265,7 +282,10 @@ int DecodeDate(char str[], int count)
     if(IsNumber(str[count-1])) // test last eleventh bit: first digit of date
     {
         day += (str[count-1] - NUMBER_START)*10;
-        // if() // check if date valid
+
+        if(IsDateVaild(year,mon_int,day)==FALSE) // check if date is invalid
+            return TRUE;
+
         count--;
         if(str[count-1] == SPACE) // test last twelfth bit: space
             return FALSE;
@@ -285,17 +305,13 @@ void Initialization()
     InterruptEnable(INT_VEC_UART0);       // Enable UART0 interrupts
     UART0_IntEnable(UART_INT_RX | UART_INT_TX); // Enable Receive and Transmit interrupts
     InterruptMasterEnable();    // Enable Master (CPU) Interrupts
-    OutputPrefix();    // Output first pre-fix
+    OutputString("> ");     // Output first pre-fix
 }
 /* check if input queue has data to process
  * process if has*/
 void CheckInputQueue()
 {
-    /*Local variables*/
-    char str[STRING_SIZE];  // command string
-    int str_counter = 0;    // command string letter counter
     int need_echo = FALSE;    // flag to indicate if ehco back
-    int is_ESC_seq = FALSE; // flag to indicate if is ESC sequences
 
     /* Input data - xmit directly */
     struct QueueData data;
@@ -317,7 +333,7 @@ void CheckInputQueue()
            if(str_counter<STRING_SIZE) // if string not full
            {
                // store to string and echo back
-               if( data_val>=ALPHABET_LC_START && data_val<=ALPHABET_LC_END ) // if is a lower case letter
+               if((data_val>=ALPHABET_LC_START) && (data_val<=ALPHABET_LC_END)) // if is a lower case letter
                    data_val &= ALPHABET_CASE_OFFSET;    // convert to upper case letter
 
                str[str_counter]=data_val;
@@ -336,22 +352,27 @@ void CheckInputQueue()
        else if(data_val == ENTER)   // if data is enter
        {
            OutputNewLine(); // change to new line
+           int count = str_counter; // save string count to local
+           str_counter = 0; // reset the string counter
 
            /* Process the string */
            if (strncmp(str, "TIME", TIME_CMD_SIZE)==EQUAL) // if start with 'TIME'
            {
-               if(str_counter == TIME_CMD_SIZE)// if has no parameter
+               if(count == TIME_CMD_SIZE)// if has no parameter
                {
                    // if time has set, output time
 
                    // if time not set, output error
                }
-               else if (str_counter == TIME_PARA_CMD_SIZE) // if has parameters
+               else if (count == TIME_PARA_CMD_SIZE) // if has parameters
                {
-                   has_error = DecodeTime(str,str_counter);
+                   has_error = DecodeTime(str,count);
                    if(has_error == FALSE)
                    {
                        // set to systick
+
+                       OutputNewLinePrefix();
+                       return;
                    }
                }
                else // error
@@ -359,25 +380,26 @@ void CheckInputQueue()
            }
            else if (strncmp(str, "DATE", DATE_CMD_SIZE)==EQUAL) // if start with 'DATE'
            {
-               if(str_counter == DATE_CMD_SIZE)// if has no parameter
+               if(count == DATE_CMD_SIZE)// if has no parameter
                {
                    // if date has set, output time
 
                    // if date not set, output error
                }
-               else if (str_counter == DATE_PARA_CMD_SIZE1 || str_counter == DATE_PARA_CMD_SIZE2) // if has parameters
+               else if ((count == DATE_PARA_CMD_SIZE1) || (count == DATE_PARA_CMD_SIZE2)) // if has parameters
                {
-                   has_error = DecodeDate(str,str_counter);
+                   has_error = DecodeDate(str,count);
                    if(has_error == FALSE)
                    {
                        // set to systick
+
+                       OutputNewLinePrefix();
+                       return;
                    }
                }
                else // error
                    has_error = TRUE;
            }
-
-           str_counter = 0; // clear the string
        }
        else if(data_val == ESC) // if data is ESC
        {
@@ -395,7 +417,7 @@ void CheckInputQueue()
        {
            TransChar(QUESTION_MARK);
            OutputNewLine();
-           OutputPrefix();
+           OutputString("> ");
        }
     }
 }
