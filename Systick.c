@@ -9,20 +9,29 @@
 #include "Queue.h"
 #include "Uart.h"
 
+#define DEFAULT_YEAR    2019
+#define DEFAULT_MON     9
+#define DEFUALT_DAY     1
+
 const int days_list[NUM_TYPE_OF_MON][NUM_OF_MON] = {  // list of possible day list
                               {31,28,31,30,31,30,31,31,30,31,30,31}, // list of days in month,days_in_month_ly
                               {31,29,31,30,31,30,31,31,30,31,30,31}}; // list of days in month in leap year
 
-
-volatile Systick_Clock clock = {.alarm_cd    = DISABLED,
-                                .day         = 1,
-                                .month       = 9,
-                                .year        = 2019,
+volatile Systick_Clock clock = {.day         = DEFUALT_DAY,
+                                .month       = DEFAULT_MON,
+                                .year        = DEFAULT_YEAR,
                                 .hour        = 0,
                                 .min         = 0,
                                 .sec         = 0,
-                                .t_sec       =0};
+                                .t_sec       = 0};
 
+volatile Systick_Clock alarm = {.day         = 0,
+                                .month       = 0,
+                                .year        = 0,
+                                .hour        = 0,
+                                .min         = 0,
+                                .sec         = 0,
+                                .t_sec       = 0};
 void SysTickStart(void)
 {
     // Set the clock source to internal and enable the counter to interrupt
@@ -72,45 +81,53 @@ int IsDateVaild(int y/*year*/, int m/*month*/, int d/*day*/)
     return ((days_list[(y%LEAP_YEAR_PERIOD)>0? FALSE:TRUE][m-1])<d)? FALSE:TRUE;
 }
 
-void IncreaseDate()
+void IncreaseDate(Systick_Clock* c)
 {
-    if((days_list[(clock.year%LEAP_YEAR_PERIOD)>0? FALSE:TRUE][clock.month-1]) == clock.day)
+    if((days_list[(c->year%LEAP_YEAR_PERIOD)>0? FALSE:TRUE][c->month-1]) == c->day)
     {
-        clock.day =0;
-        if(clock.month == NUM_OF_MON)
+        c->day =0;
+        if(c->month == NUM_OF_MON)
         {
-            clock.month = 0;
-            clock.year++;
+            c->month = 0;
+            c->year++;
         }
     }
 }
 
-void Tick()
+// add hour:min:sec.t to time
+void IncreaseTime(int hour, int min, int sec, int t, Systick_Clock* c)
 {
-    // Update time and date
-    if(clock.t_sec == MAX_T_SEC)
-    {
-        clock.t_sec = 0;
-        if (clock.sec == MAX_SEC)
-        {
-            clock.sec = 0;
-            if(clock.min == MAX_MIN)
-            {
-                clock.min = 0;
-                if (clock.hour == MAX_HOUR)
-                {
-                    clock.hour = 0;
-                    IncreaseDate();
-                }
-                else clock.hour++;
-            }
-            else clock.min++;
-        }
-        else clock.sec++;
-    }
-    else clock.t_sec++;
+    int remainder = t+c->t_sec-MAX_T_SEC;
 
-    // Update clock
-    if(clock.alarm_cd>=0)
-        clock.alarm_cd--;
+    // Update time and date
+    if(remainder > 0)
+    {
+        c->t_sec = remainder-1;
+        sec++;
+    }
+    else c->t_sec+= t;
+    remainder = sec+c->sec-MAX_SEC;
+
+    if (remainder > 0)
+    {
+        c->sec = remainder-1;
+        min++;
+    }
+    else c->sec+= sec;
+    remainder = min+c->min-MAX_MIN;
+
+    if(remainder > 0)
+    {
+        c->min = remainder-1;
+        hour++;
+    }
+    else c->min+= min;
+    remainder = hour+c->hour-MAX_HOUR;
+
+    if (remainder>0)
+    {
+        c->hour = remainder-1;
+        IncreaseDate(c);
+    }
+    else c->hour+=hour;
 }

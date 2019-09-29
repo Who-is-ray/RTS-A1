@@ -12,8 +12,8 @@
 #include "Systick.h"
 
 #define STRING_SIZE             64          // size of string to store
-#define ALARM_PARA_CMD_SIZE     16          // size of alarm cmd with parameter
 #define ALARM_CMD_SIZE          5           // size of alarm cmd
+#define ALARM_PARA_CMD_SIZE     16          // size of alarm cmd with parameter
 #define TIME_CMD_SIZE           4           // size of time cmd
 #define TIME_PARA_CMD_SIZE      15          // size of time cmd with parameter
 #define DATE_CMD_SIZE           4           // size of date cmd
@@ -39,22 +39,31 @@
 #define COLON                   58
 #define BACKSPACE               127
 #define ESC                     27
+#define BEL                     7
 #define EQUAL                   0
 
 extern Systick_Clock clock;
+extern Systick_Clock alarm;
 
-char str[STRING_SIZE];  // command string
-int str_counter = 0;    // command string letter counter
-int is_ESC_seq = FALSE; // flag to indicate if is ESC sequences
-int t_sec,  //1/10 of second
-    sec,    // second
-    min,    // minute
-    hour,   // hour
-    day,    // day
-    mon_int,// month integer
-    year = 0; // year
+char str[STRING_SIZE];      // command string
+int str_counter = 0;        // command string letter counter
+int is_ESC_seq = FALSE;     // flag to indicate if is ESC sequences
+int is_alarm_active=FALSE;  // is alarm turned on
+int t_sec,                  //1/10 of second
+    sec,                    // second
+    min,                    // minute
+    hour,                   // hour
+    day,                    // day
+    mon_int,                // month integer
+    year = 0;               // year
 char mon_str[NUM_OF_CHAR_IN_MON]; //month string
 const char mon_list[NUM_OF_MON][NUM_OF_CHAR_IN_MON]={"JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"}; // list of month
+
+//****************************************************************************
+//
+// Local functions
+//
+//*****************************************************************************
 
 /* Transmit a character*/
 void TransChar(char c)
@@ -86,18 +95,18 @@ void OutputNewLinePrefix()
 }
 
 /* Output current time*/
-void OutputCurrentTime()
+void OutputTime(Systick_Clock c)
 {
-    TransChar(clock.hour/10+NUMBER_START);
-    TransChar(clock.hour%10+NUMBER_START);
+    TransChar(c.hour/10+NUMBER_START);
+    TransChar(c.hour%10+NUMBER_START);
     OutputString(":");
-    TransChar(clock.min/10+NUMBER_START);
-    TransChar(clock.min%10+NUMBER_START);
+    TransChar(c.min/10+NUMBER_START);
+    TransChar(c.min%10+NUMBER_START);
     OutputString(":");
-    TransChar(clock.sec/10+NUMBER_START);
-    TransChar(clock.sec%10+NUMBER_START);
+    TransChar(c.sec/10+NUMBER_START);
+    TransChar(c.sec%10+NUMBER_START);
     OutputString(".");
-    TransChar(clock.t_sec+NUMBER_START);
+    TransChar(c.t_sec+NUMBER_START);
 }
 
 /* Output current date*/
@@ -324,6 +333,7 @@ void Initialization()
     InterruptMasterEnable();    // Enable Master (CPU) Interrupts
     OutputString("> ");     // Output first pre-fix
 }
+
 /* check if input queue has data to process
  * process if has*/
 void CheckInputQueue()
@@ -370,16 +380,16 @@ void CheckInputQueue()
             }
             else if(data_val == ENTER)   // if data is enter
             {
-               OutputNewLine(); // change to new line
-               int count = str_counter; // save string count to local
-               str_counter = 0; // reset the string counter
+                OutputNewLine(); // change to new line
+                int count = str_counter; // save string count to local
+                str_counter = 0; // reset the string counter
 
-               /* Process the string */
-               if (strncmp(str, "TIME", TIME_CMD_SIZE)==EQUAL) // if start with 'TIME'
-               {
+                /* Process the string */
+                if (strncmp(str, "TIME", TIME_CMD_SIZE)==EQUAL) // if start with 'TIME'
+                {
                    if(count == TIME_CMD_SIZE)// if has no parameter
                    {
-                       OutputCurrentTime();
+                       OutputTime(clock);
                        OutputNewLinePrefix();
                    }
                    else if (count == TIME_PARA_CMD_SIZE) // if has parameters
@@ -394,16 +404,16 @@ void CheckInputQueue()
                            clock.hour = hour;
 
                            // Output set time
-                           OutputCurrentTime();
+                           OutputTime(clock);
                            OutputNewLinePrefix();
                            return;
                        }
                    }
                    else // error
                        has_error = TRUE;
-               }
-               else if (strncmp(str, "DATE", DATE_CMD_SIZE)==EQUAL) // if start with 'DATE'
-               {
+                }
+                else if (strncmp(str, "DATE", DATE_CMD_SIZE)==EQUAL) // if start with 'DATE'
+                {
                    if(count == DATE_CMD_SIZE)// if has no parameter
                    {
                        OutputCurrentDate();
@@ -427,7 +437,38 @@ void CheckInputQueue()
                    }
                    else // error
                        has_error = TRUE;
-               }
+                }
+                else if (strncmp(str, "ALARM", ALARM_CMD_SIZE)==EQUAL) // if start with 'ALARM'
+                {
+                   if(count == ALARM_CMD_SIZE)// if has no parameter
+                   {
+                       // clear alarm
+                       is_alarm_active = FALSE;
+                       OutputString("Alarm cleared");
+                       OutputNewLinePrefix();
+                   }
+                   else if (count == ALARM_PARA_CMD_SIZE) // if has parameters
+                   {
+                       has_error = DecodeTime(str,count);
+                       if(has_error == FALSE)
+                       {
+                           // add to alarm
+                           alarm = clock;
+                           IncreaseTime(hour,min,sec,t_sec,&alarm);
+                           is_alarm_active = TRUE;
+
+                           // Output set time
+                           OutputString("Alarm at ");
+                           OutputTime(alarm);
+                           OutputNewLinePrefix();
+                           return;
+                       }
+                   }
+                   else // error
+                       has_error = TRUE;
+                }
+                else // error
+                   has_error = TRUE;
             }
             else if(data_val == ESC) // if data is ESC
             {
@@ -449,19 +490,31 @@ void CheckInputQueue()
         }
         else // if is systick
         {
-            Tick();
+            IncreaseTime(0,0,0,1,&clock);
+            CheckAlarm();
         }
     }
 }
 
-void CheckAlarm() // check is alarm triggered
+/* check is alarm triggered*/
+void CheckAlarm()
 {
-    if(clock.alarm_cd==0) // if should triggered
+    if( (is_alarm_active==TRUE)     &&
+        (alarm.hour==clock.hour)    &&
+        (alarm.min==clock.min)      &&
+        (alarm.sec==clock.sec)      &&
+        (alarm.t_sec==clock.t_sec)  &&
+        (alarm.day==clock.day)      &&
+        (alarm.month==clock.month)  &&
+        (alarm.year==clock.year)) // if should triggered
     {
         OutputNewLine();
         OutputString("* ALARM * ");
-        OutputCurrentTime();
+        OutputTime(clock);
         OutputString(" *");
+        OutputNewLinePrefix();
+        TransChar(BEL); // output audible beep
+        is_alarm_active = FALSE; // turn off alarm
     }
 }
 
@@ -478,8 +531,5 @@ void Run()
     Initialization();
 
     while(1)
-    {
         CheckInputQueue();
-        CheckAlarm();
-    }
 }

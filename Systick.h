@@ -41,11 +41,10 @@ typedef struct {
         day,    // day
         month,  // month integer
         year;   // year
-    int alarm_cd; // alarm count down
 } Systick_Clock; // Clock elements
 
 void SysTickInit(); // initialization
-void Tick(); // clock tick, t_sec++
-int IsDateVaild(int y/*year*/, int m/*month*/, int d/*day*/); //Check if date valid
+void IncreaseTime(int hour, int min, int sec, int t, Systick_Clock* c);
+int  IsDateVaild(int y/*year*/, int m/*month*/, int d/*day*/); //Check if date valid
 
 #endif /* SYSTICK_H_ */
