@@ -49,7 +49,7 @@ typedef struct
 } Queue;
 
 void Queue_Init();  // Initialize input queue and output queue by setting the head and tail to 0
-int EnQueue(QueueType t, Source s, char v);   //Enqueue a data to a queue
-int DeQueue(QueueType t, Source* s, char* v);  //Dequeue a data from a queue
+int EnQueue(QueueType t, Source s, char v);   //Enqueue a character to selected queue
+int DeQueue(QueueType t, Source* s, char* v);  //Dequeue a character from selected queue
 
 #endif /* QUEUE_H_ */

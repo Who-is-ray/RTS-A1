@@ -81,6 +81,7 @@ int IsDateVaild(int y/*year*/, int m/*month*/, int d/*day*/)
     return ((days_list[(y%LEAP_YEAR_PERIOD)>0? FALSE:TRUE][m-1])<d)? FALSE:TRUE;
 }
 
+/* Increase date by 1*/
 void IncreaseDate(Systick_Clock* c)
 {
     if((days_list[(c->year%LEAP_YEAR_PERIOD)>0? FALSE:TRUE][c->month-1]) == c->day)
@@ -94,37 +95,39 @@ void IncreaseDate(Systick_Clock* c)
     }
 }
 
-// add hour:min:sec.t to time
+/* Add 'hour:min:sec.t' to selected time*/
 void IncreaseTime(int hour, int min, int sec, int t, Systick_Clock* c)
 {
+    // add tenth second
     int remainder = t+c->t_sec-MAX_T_SEC;
-
-    // Update time and date
-    if(remainder > 0)
+    if(remainder > 0) //if overflow
     {
         c->t_sec = remainder-1;
         sec++;
     }
     else c->t_sec+= t;
-    remainder = sec+c->sec-MAX_SEC;
 
-    if (remainder > 0)
+    // add second
+    remainder = sec+c->sec-MAX_SEC;
+    if (remainder > 0) //if overflow
     {
         c->sec = remainder-1;
         min++;
     }
     else c->sec+= sec;
-    remainder = min+c->min-MAX_MIN;
 
-    if(remainder > 0)
+    // add minute
+    remainder = min+c->min-MAX_MIN;
+    if(remainder > 0) //if overflow
     {
         c->min = remainder-1;
         hour++;
     }
     else c->min+= min;
-    remainder = hour+c->hour-MAX_HOUR;
 
-    if (remainder>0)
+    // add hour
+    remainder = hour+c->hour-MAX_HOUR;
+    if (remainder>0) //if overflow
     {
         c->hour = remainder-1;
         IncreaseDate(c);

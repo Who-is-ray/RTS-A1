@@ -41,7 +41,7 @@ typedef struct {
         day,    // day
         month,  // month integer
         year;   // year
-} Systick_Clock; // Clock elements
+} Systick_Clock;// Clock struct
 
 void SysTickInit(); // initialization
 void IncreaseTime(int hour, int min, int sec, int t, Systick_Clock* c);

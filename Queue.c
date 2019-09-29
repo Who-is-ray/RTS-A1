@@ -24,7 +24,6 @@ void Queue_Init()
 int EnQueue(QueueType t, Source s, char v)
 {
     int head;
-    int rtv = FALSE;    // return value
     switch (t)
     {
         case INPUT:
@@ -35,7 +34,7 @@ int EnQueue(QueueType t, Source s, char v)
                 (InQ.queue[head]).value = v;
                 InQ.queue[head].source = s;
                 InQ.Head=(head+1)&QSM1;
-                rtv = TRUE;
+                return TRUE;
             }
             break;
         }
@@ -46,20 +45,22 @@ int EnQueue(QueueType t, Source s, char v)
             {
                 if(UART_STATUS == BUSY) // if uart is busy
                 {
+                    // add to queue
                     OutQ.queue[OutQ.Head].value = v;
                     OutQ.Head=(head+1)&QSM1;
                 }
                 else // uart not busy
                 {
+                    // directly output, set to busy
                     UART_STATUS = BUSY;
                     UART0_DR_R = v;
                 }
-                rtv = TRUE;
+                return TRUE;
             }
             break;
         }
     }
-    return rtv;
+    return FALSE;
 }
 
 int DeQueue(QueueType t, Source* s, char* v)
@@ -70,7 +71,7 @@ int DeQueue(QueueType t, Source* s, char* v)
         case INPUT:
         {
             tail = InQ.Tail;
-            if(InQ.Head!=tail)  // if not empty
+            if(InQ.Head!=tail)  // if not empty, dequeue
             {
                 *s=InQ.queue[tail].source;
                 *v=InQ.queue[tail].value;
@@ -85,7 +86,7 @@ int DeQueue(QueueType t, Source* s, char* v)
         case OUTPUT:
         {
             tail = OutQ.Tail;
-            if(OutQ.Head!=tail)  // if not empty
+            if(OutQ.Head!=tail)  // if not empty, dequeue
             {
                 *v=OutQ.queue[tail].value;
                 OutQ.Tail = (tail+1)&QSM1;    // Update tail

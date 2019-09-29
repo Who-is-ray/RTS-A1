@@ -49,7 +49,7 @@ char str[STRING_SIZE];      // command string
 int str_counter = 0;        // command string letter counter
 int is_ESC_seq = FALSE;     // flag to indicate if is ESC sequences
 int is_alarm_active=FALSE;  // is alarm turned on
-int t_sec,                  //1/10 of second
+int t_sec,                  // 1/10 of second
     sec,                    // second
     min,                    // minute
     hour,                   // hour
@@ -68,7 +68,7 @@ const char mon_list[NUM_OF_MON][NUM_OF_CHAR_IN_MON]={"JAN","FEB","MAR","APR","MA
 /* Transmit a character*/
 void TransChar(char c)
 {
-    while(EnQueue(OUTPUT, UART, c)==FALSE);
+    while(EnQueue(OUTPUT, UART, c)==FALSE); // wait until it added to queue
 }
 
 /* Output a string*/
@@ -320,6 +320,28 @@ int DecodeDate(char str[], int count)
     return TRUE;
 }
 
+/* check is alarm triggered*/
+void CheckAlarm()
+{
+    if( (is_alarm_active==TRUE)     &&
+        (alarm.hour==clock.hour)    &&
+        (alarm.min==clock.min)      &&
+        (alarm.sec==clock.sec)      &&
+        (alarm.t_sec==clock.t_sec)  &&
+        (alarm.day==clock.day)      &&
+        (alarm.month==clock.month)  &&
+        (alarm.year==clock.year)) // if should triggered
+    {
+        OutputNewLine();
+        OutputString("* ALARM * ");
+        OutputTime(clock);
+        OutputString(" *");
+        OutputNewLinePrefix();
+        TransChar(BEL); // output audible beep
+        is_alarm_active = FALSE; // turn off alarm
+    }
+}
+
 /* Initialization Uart, Systick and Queues
  * Enable interrupts*/
 void Initialization()
@@ -395,7 +417,7 @@ void CheckInputQueue()
                    else if (count == TIME_PARA_CMD_SIZE) // if has parameters
                    {
                        has_error = DecodeTime(str,count);
-                       if(has_error == FALSE)
+                       if(has_error == FALSE) // if time valid
                        {
                            // set to clock
                            clock.t_sec = t_sec;
@@ -422,7 +444,7 @@ void CheckInputQueue()
                    else if ((count == DATE_PARA_CMD_SIZE1) || (count == DATE_PARA_CMD_SIZE2)) // if has parameters
                    {
                        has_error = DecodeDate(str,count);
-                       if(has_error == FALSE)
+                       if(has_error == FALSE) // if date valid
                        {
                            // set to clock
                            clock.day = day;
@@ -442,7 +464,7 @@ void CheckInputQueue()
                 {
                    if(count == ALARM_CMD_SIZE)// if has no parameter
                    {
-                       // clear alarm
+                       // clear alarm and output msg
                        is_alarm_active = FALSE;
                        OutputString("Alarm cleared");
                        OutputNewLinePrefix();
@@ -450,7 +472,7 @@ void CheckInputQueue()
                    else if (count == ALARM_PARA_CMD_SIZE) // if has parameters
                    {
                        has_error = DecodeTime(str,count);
-                       if(has_error == FALSE)
+                       if(has_error == FALSE) // if time valid
                        {
                            // add to alarm
                            alarm = clock;
@@ -493,28 +515,6 @@ void CheckInputQueue()
             IncreaseTime(0,0,0,1,&clock);
             CheckAlarm();
         }
-    }
-}
-
-/* check is alarm triggered*/
-void CheckAlarm()
-{
-    if( (is_alarm_active==TRUE)     &&
-        (alarm.hour==clock.hour)    &&
-        (alarm.min==clock.min)      &&
-        (alarm.sec==clock.sec)      &&
-        (alarm.t_sec==clock.t_sec)  &&
-        (alarm.day==clock.day)      &&
-        (alarm.month==clock.month)  &&
-        (alarm.year==clock.year)) // if should triggered
-    {
-        OutputNewLine();
-        OutputString("* ALARM * ");
-        OutputTime(clock);
-        OutputString(" *");
-        OutputNewLinePrefix();
-        TransChar(BEL); // output audible beep
-        is_alarm_active = FALSE; // turn off alarm
     }
 }
 
