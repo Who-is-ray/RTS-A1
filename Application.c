@@ -37,8 +37,6 @@
 #define DASH                    45
 #define PERIOD                  46
 #define COLON                   58
-#define GREATER_THAN            62
-#define QUESTION_MARK           63
 #define BACKSPACE               127
 #define ESC                     27
 #define EQUAL                   0
@@ -85,6 +83,41 @@ void OutputNewLinePrefix()
     TransChar(ENTER);
     TransChar(VERTICAL_TAB);
     OutputString("> ");
+}
+
+/* Output current time*/
+void OutputCurrentTime()
+{
+    TransChar(clock.hour/10+NUMBER_START);
+    TransChar(clock.hour%10+NUMBER_START);
+    OutputString(":");
+    TransChar(clock.min/10+NUMBER_START);
+    TransChar(clock.min%10+NUMBER_START);
+    OutputString(":");
+    TransChar(clock.sec/10+NUMBER_START);
+    TransChar(clock.sec%10+NUMBER_START);
+    OutputString(".");
+    TransChar(clock.t_sec+NUMBER_START);
+}
+
+/* Output current date*/
+void OutputCurrentDate()
+{
+    if(clock.day/10)// if two digit date
+        TransChar(clock.day/10+NUMBER_START);
+    TransChar(clock.day%10+NUMBER_START); // output ones digit date
+    OutputString("-");
+
+    //Output month string
+    char month_str[3];
+    strncpy(month_str, mon_list[clock.month-1],3);
+    OutputString(month_str);
+
+    OutputString("-");
+    TransChar(clock.year/1000+NUMBER_START);
+    TransChar((clock.year/100)%10+NUMBER_START);
+    TransChar((clock.year/10)%100+NUMBER_START);
+    TransChar(((clock.year%1000)%100)%10+NUMBER_START);
 }
 
 /* Indicate if the character is a number*/
@@ -287,6 +320,7 @@ void Initialization()
     Queue_Init();           // Initialize Queues
     InterruptEnable(INT_VEC_UART0);       // Enable UART0 interrupts
     UART0_IntEnable(UART_INT_RX | UART_INT_TX); // Enable Receive and Transmit interrupts
+    SysTickInit();  // Enable Systick
     InterruptMasterEnable();    // Enable Master (CPU) Interrupts
     OutputString("> ");     // Output first pre-fix
 }
@@ -345,17 +379,22 @@ void CheckInputQueue()
                {
                    if(count == TIME_CMD_SIZE)// if has no parameter
                    {
-                       // if time has set, output time
-
-                       // if time not set, output error
+                       OutputCurrentTime();
+                       OutputNewLinePrefix();
                    }
                    else if (count == TIME_PARA_CMD_SIZE) // if has parameters
                    {
                        has_error = DecodeTime(str,count);
                        if(has_error == FALSE)
                        {
-                           // set to systick
+                           // set to clock
+                           clock.t_sec = t_sec;
+                           clock.sec = sec;
+                           clock.min = min;
+                           clock.hour = hour;
 
+                           // Output set time
+                           OutputCurrentTime();
                            OutputNewLinePrefix();
                            return;
                        }
@@ -367,17 +406,21 @@ void CheckInputQueue()
                {
                    if(count == DATE_CMD_SIZE)// if has no parameter
                    {
-                       // if date has set, output time
-
-                       // if date not set, output error
+                       OutputCurrentDate();
+                       OutputNewLinePrefix();
                    }
                    else if ((count == DATE_PARA_CMD_SIZE1) || (count == DATE_PARA_CMD_SIZE2)) // if has parameters
                    {
                        has_error = DecodeDate(str,count);
                        if(has_error == FALSE)
                        {
-                           // set to systick
+                           // set to clock
+                           clock.day = day;
+                           clock.month = mon_int;
+                           clock.year = year;
 
+                           // Output set time
+                           OutputCurrentDate();
                            OutputNewLinePrefix();
                            return;
                        }
@@ -400,9 +443,8 @@ void CheckInputQueue()
             }
             else if(has_error) // report error
             {
-               TransChar(QUESTION_MARK);
-               OutputNewLine();
-               OutputString("> ");
+               OutputString("?");
+               OutputNewLinePrefix();
             }
         }
         else // if is systick
@@ -411,6 +453,18 @@ void CheckInputQueue()
         }
     }
 }
+
+void CheckAlarm() // check is alarm triggered
+{
+    if(clock.alarm_cd==0) // if should triggered
+    {
+        OutputNewLine();
+        OutputString("* ALARM * ");
+        OutputCurrentTime();
+        OutputString(" *");
+    }
+}
+
 
 //****************************************************************************
 //
@@ -426,6 +480,6 @@ void Run()
     while(1)
     {
         CheckInputQueue();
-        // CheckAlarm();
+        CheckAlarm();
     }
 }

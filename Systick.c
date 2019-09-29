@@ -87,6 +87,7 @@ void IncreaseDate()
 
 void Tick()
 {
+    // Update time and date
     if(clock.t_sec == MAX_T_SEC)
     {
         clock.t_sec = 0;
@@ -101,7 +102,15 @@ void Tick()
                     clock.hour = 0;
                     IncreaseDate();
                 }
+                else clock.hour++;
             }
+            else clock.min++;
         }
+        else clock.sec++;
     }
+    else clock.t_sec++;
+
+    // Update clock
+    if(clock.alarm_cd>=0)
+        clock.alarm_cd--;
 }
