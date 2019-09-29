@@ -68,7 +68,7 @@ const char mon_list[NUM_OF_MON][NUM_OF_CHAR_IN_MON]={"JAN","FEB","MAR","APR","MA
 /* Transmit a character*/
 void TransChar(char c)
 {
-    while(EnQueue(OUTPUT, UART, c)==FALSE); // wait until it added to queue
+    while(EnQueue(OUTPUT, UART, c)==FALSE); // wait until it is enqueued
 }
 
 /* Output a string*/
@@ -76,7 +76,7 @@ void OutputString(const char* s)
 {
     int i;
     for(i = 0; i <= strlen(s); i++) // output each character in string
-        {while(EnQueue(OUTPUT, UART, s[i])==FALSE);}
+        TransChar(s[i]);
 }
 
 /* Move cursor to new line*/
