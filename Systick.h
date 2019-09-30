@@ -29,9 +29,6 @@
 #define MAX_HOUR            23          // max value of hour
 #define NUM_OF_MON          12          // number of month
 #define NUM_TYPE_OF_MON     2           // leap year month and normal year month
-#define LEAP_YEAR_PERIOD    4           // leap year period
-#define DISABLED            -1
-#define NULL                0
 
 typedef struct {
     int t_sec,  //1/10 of second

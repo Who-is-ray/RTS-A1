@@ -9,9 +9,12 @@
 #include "Queue.h"
 #include "Uart.h"
 
-#define DEFAULT_YEAR    2019
-#define DEFAULT_MON     9
-#define DEFUALT_DAY     1
+#define CENTURY_LEAP_YEAR_PERIOD    400         // century leap year period
+#define LEAP_YEAR_PERIOD            4           // leap year period
+#define DEFAULT_YEAR                2019
+#define DEFAULT_MON                 9
+#define DEFUALT_DAY                 1
+#define NULL                        0
 
 const int days_list[NUM_TYPE_OF_MON][NUM_OF_MON] = {  // list of possible day list
                               {31,28,31,30,31,30,31,31,30,31,30,31}, // list of days in month,days_in_month_ly
@@ -78,7 +81,7 @@ void SysTickInit()
 
 int IsDateVaild(int y/*year*/, int m/*month*/, int d/*day*/)
 {
-    return ((days_list[(y%LEAP_YEAR_PERIOD)>0? FALSE:TRUE][m-1])<d)? FALSE:TRUE;
+    return ((days_list[(((y%LEAP_YEAR_PERIOD)==0)&&(y%CENTURY_LEAP_YEAR_PERIOD)>0)? TRUE:FALSE][m-1])<d)? FALSE:TRUE;
 }
 
 /* Increase date by 1*/
