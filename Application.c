@@ -20,6 +20,13 @@
 #define DATE_PARA_CMD_SIZE1     15          // size of date cmd with parameter of 1 digit date
 #define DATE_PARA_CMD_SIZE2     16          // size of date cmd with parameter of 2 digits date
 #define NUM_OF_CHAR_IN_MON      3           // number of letter in month
+#define NUM_OF_TIME_ELEMENT     4           // number of time elements
+#define NUM_OF_DATE_ELEMENT     3           // number of date elements
+#define DATA_COUNT_INIT_VAL     -1          // data_count initial value
+#define TIME_HOUR               0           // position of hour in time array
+#define TIME_MIN                1           // position of minute in time array
+#define TIME_SEC                2           // position of second in time array
+#define TIME_T_SEC              3           // position of tenths second in time array
 
 // ASCII Table Define
 #define COMMON_CHAR_START       32          // char can direct echo start from 32(' ')
@@ -49,14 +56,12 @@ char str[STRING_SIZE];      // command string
 int str_counter = 0;        // command string letter counter
 int is_ESC_seq = FALSE;     // flag to indicate if is ESC sequences
 int is_alarm_active=FALSE;  // is alarm turned on
-int t_sec,                  // 1/10 of second
-    sec,                    // second
-    min,                    // minute
-    hour,                   // hour
-    day,                    // day
+int day,                    // day
     mon_int,                // month integer
     year = 0;               // year
+int time[NUM_OF_TIME_ELEMENT]; // time array: {hour,min,sec,t_sec}
 char mon_str[NUM_OF_CHAR_IN_MON]; //month string
+const char time_symbol[]={SPACE,COLON,COLON,PERIOD}; // time symbol array: {' ',':',':','.'}
 const char mon_list[NUM_OF_MON][NUM_OF_CHAR_IN_MON]={"JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"}; // list of month
 
 //****************************************************************************
@@ -147,89 +152,52 @@ int IsUCLetter(char c)
 
 /* Decoding the time from command
  * return true if invalid*/
-int DecodeTime(char str[], int count)
+int DecodeTime(char str[], int char_count, int str_len)
 {
-    if(IsNumber(str[count-1])) // test last bit: 1/10 of second
+    int data_count = DATA_COUNT_INIT_VAL;
+    int is_data_updated = FALSE;
+
+    // clear read time
+    int i;
+    for(i = 0; i<NUM_OF_TIME_ELEMENT; i++)
+        time[i] = 0;
+
+    while(char_count<str_len) // decode string after "time" or "alarm"
     {
-        t_sec = str[count-1] - NUMBER_START;
-        count--;
+        if(str[char_count] != time_symbol[data_count+1]) // test symbol
+            return TRUE ;
+        else
+            data_count++;
+
+        char_count++;
+        if(char_count>=str_len)
+            break;
+
+        if(IsNumber(str[char_count])) // if next bit is a number
+        {
+            time[data_count] = str[char_count] - NUMBER_START;
+            char_count++;
+            if((char_count<str_len) && IsNumber(str[char_count])) // test if next bit exist and is a number
+            {
+                time[data_count] *= 10; // set to value of tens digit
+                time[data_count] += str[char_count] - NUMBER_START;
+                char_count++;
+            }
+            is_data_updated=TRUE;
+        }
+        else //not a number
+            time[data_count] = 0;
     }
-    else // if invalid
-        return TRUE;
 
-    if(str[count-1] == PERIOD) // test last second bit: period
-        count--;
-    else // if invalid
-        return TRUE;
-
-    if(IsNumber(str[count-1])) // test last thrid bit: second ones digit
-    {
-        sec = str[count-1] - NUMBER_START;
-        count--;
-    }
-    else // if invalid
-        return TRUE;
-
-    if(IsNumber(str[count-1])) // test last forth bit: second tens digit
-    {
-        sec += (str[count-1] - NUMBER_START)*10;
-        if(sec>MAX_SEC)  // if second is invalid
+    if(is_data_updated) // if data updated
+        // if data valid
+        if((time[TIME_HOUR]>MAX_HOUR)   ||
+           (time[TIME_MIN]>MAX_MIN)     ||
+           (time[TIME_SEC]>MAX_SEC)     ||
+           (time[TIME_T_SEC]>MAX_T_SEC))
             return TRUE;
-        count--;
-    }
-    else // if invalid
-        return TRUE;
 
-    if(str[count-1] == COLON) // test last fifth bit: colon
-        count--;
-    else // if invalid
-        return TRUE;
-
-    if(IsNumber(str[count-1])) // test last sixth bit: minute ones digit
-    {
-        min = str[count-1] - NUMBER_START;
-        count--;
-    }
-    else // if invalid
-        return TRUE;
-
-    if(IsNumber(str[count-1])) // test last seventh bit: minute tens digit
-    {
-        min += (str[count-1] - NUMBER_START)*10;
-        if(min>MAX_MIN)  // if minute is invalid
-            return TRUE;
-        count--;
-    }
-    else // if invalid
-        return TRUE;
-
-    if(str[count-1] == COLON) // test last eighth bit: colon
-        count--;
-    else // if invalid
-        return TRUE;
-
-    if(IsNumber(str[count-1])) // test last ninth bit: hour ones digit
-    {
-        hour = str[count-1] - NUMBER_START;
-        count--;
-    }
-    else // if invalid
-        return TRUE;
-
-    if(IsNumber(str[count-1])) // test last tenth bit: hour tens digit
-    {
-        hour += (str[count-1] - NUMBER_START)*10;
-        if(hour>MAX_HOUR)  // if minute is invalid
-            return TRUE;
-        count--;
-    }
-    else // if invalid
-        return TRUE;
-
-    if(str[count-1] == SPACE) // test last eleventh bit: space
-        return FALSE;
-
-    return TRUE;
+    return FALSE;
 }
 
 /* Decoding the time from command
@@ -375,7 +343,7 @@ void CheckInputQueue()
             if(is_ESC_seq == TRUE)   // if is a part of ESC sequence
             {
                char data_val_uc = data_val & ALPHABET_CASE_OFFSET;    // convert to upper case letter
-               if(data_val_uc>=ALPHABET_UC_START && data_val_uc<=ALPHABET_UC_END)
+               if(IsUCLetter(data_val_uc))
                    is_ESC_seq = FALSE;  // most case ESC sequences ended with a letter
                need_echo = TRUE;
             }
@@ -414,16 +382,16 @@ void CheckInputQueue()
                        OutputTime(clock);
                        OutputNewLinePrefix();
                    }
-                   else if (count == TIME_PARA_CMD_SIZE) // if has parameters
+                   else // if has parameters
                    {
-                       has_error = DecodeTime(str,count);
+                       has_error = DecodeTime(str,TIME_CMD_SIZE,count);
                        if(has_error == FALSE) // if time valid
                        {
                            // set to clock
-                           clock.t_sec = t_sec;
-                           clock.sec = sec;
-                           clock.min = min;
-                           clock.hour = hour;
+                           clock.t_sec  = time[TIME_T_SEC];
+                           clock.sec    = time[TIME_SEC];
+                           clock.min    = time[TIME_MIN];
+                           clock.hour   = time[TIME_HOUR];
 
                            // Output set time
                            OutputTime(clock);
@@ -431,8 +399,6 @@ void CheckInputQueue()
                            return;
                        }
                    }
-                   else // error
-                       has_error = TRUE;
                 }
                 else if (strncmp(str, "DATE", DATE_CMD_SIZE)==EQUAL) // if start with 'DATE'
                 {
@@ -469,14 +435,14 @@ void CheckInputQueue()
                        OutputString("Alarm cleared");
                        OutputNewLinePrefix();
                    }
-                   else if (count == ALARM_PARA_CMD_SIZE) // if has parameters
+                   else // if has parameters
                    {
-                       has_error = DecodeTime(str,count);
+                       has_error = DecodeTime(str,ALARM_CMD_SIZE,count);
                        if(has_error == FALSE) // if time valid
                        {
                            // add to alarm
                            alarm = clock;
-                           IncreaseTime(hour,min,sec,t_sec,&alarm);
+                           IncreaseTime(time[TIME_HOUR],time[TIME_MIN],time[TIME_SEC],time[TIME_T_SEC],&alarm);
                            is_alarm_active = TRUE;
 
                            // Output set time
@@ -486,8 +452,6 @@ void CheckInputQueue()
                            return;
                        }
                    }
-                   else // error
-                       has_error = TRUE;
                 }
                 else // error
                    has_error = TRUE;
