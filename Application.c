@@ -38,7 +38,7 @@
 #define ALPHABET_LC_START       97          // alphabet lower case character start from 97('a')
 #define ALPHABET_LC_END         122         // alphabet lower case character end at 122('z')
 #define ALPHABET_CASE_OFFSET    0b11011111  // and value upper case
-#define VERTICAL_TAB            11
+#define LINE_FEED               10
 #define ENTER                   13
 #define SPACE                   32
 #define DASH                    45
@@ -88,7 +88,7 @@ void OutputString(const char* s)
 void OutputNewLine()
 {
     TransChar(ENTER);
-    TransChar(VERTICAL_TAB);
+    TransChar(LINE_FEED);
 }
 
 /* Move cursor to new line and output prefix*/
