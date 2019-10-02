@@ -91,6 +91,14 @@ void OutputNewLine()
 {
     TransChar(ENTER);
     TransChar(LINE_FEED);
+    cursor_line++;
+
+    if(cursor_line == SCREEN_BOTTOM) // if reach screen bottom, scroll up one line
+    {
+        TransChar(ESC);
+        TransChar('D');
+        cursor_line--;
+    }
 }
 
 /* Move cursor to new line and output prefix*/
@@ -347,6 +355,11 @@ void CheckInputQueue()
                if(IsUCLetter(data_val_uc))
                    is_ESC_seq = FALSE;  // most case ESC sequences ended with a letter
                need_echo = TRUE;
+
+               if(data_val == 'A' && cursor_line > 1) // if move cursor up
+                   cursor_line--;
+               else if (data_val == 'B')    // if move cursor down
+                   cursor_line++;
             }
             else if(data_val>=COMMON_CHAR_START && data_val<=COMMON_CHAR_END) // if data is common char
             {
@@ -468,6 +481,13 @@ void CheckInputQueue()
             {
                TransChar(data.value); // echo back
                need_echo = FALSE;
+
+               if(cursor_line == SCREEN_BOTTOM) // if reach screen bottom, scroll up one line
+               {
+                   TransChar(ESC);
+                   TransChar('D');
+                   cursor_line--;
+               }
             }
             else if(has_error) // report error
             {
