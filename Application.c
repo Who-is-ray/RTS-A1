@@ -335,154 +335,159 @@ void CheckInputQueue()
     QueueData data;
     if(DeQueue(INPUT,&data.source,&data.value) == TRUE) // If input is not empty
     {
-        if(data.source == UART) // if is UART
+        switch(data.source)
         {
-            char data_val=data.value;
-            int has_error = FALSE; // flag indicate if cmd has error
+            case UART:// if is UART
+            {
+                char data_val=data.value;
+                int has_error = FALSE; // flag indicate if cmd has error
 
-            /*process the input*/
-            if(is_ESC_seq == TRUE)   // if is a part of ESC sequence
-            {
-               char data_val_uc = data_val & ALPHABET_CASE_OFFSET;    // convert to upper case letter
-               if(IsUCLetter(data_val_uc))
-                   is_ESC_seq = FALSE;  // most case ESC sequences ended with a letter
-               need_echo = TRUE;
-            }
-            else if(data_val>=COMMON_CHAR_START && data_val<=COMMON_CHAR_END) // if data is common char
-            {
-               if(str_counter<STRING_SIZE) // if string not full
-               {
-                   // store to string and echo back
-                   if((data_val>=ALPHABET_LC_START) && (data_val<=ALPHABET_LC_END)) // if is a lower case letter
-                       data_val &= ALPHABET_CASE_OFFSET;    // convert to upper case letter
-
-                   str[str_counter]=data_val;
-                   str_counter++;
-                   need_echo = TRUE;
-               }
-            }
-            else if(data_val == BACKSPACE)   // if data is backspace
-            {
-               if(str_counter >0)    // if string not empty
-               {
-                   str_counter--;   // remove last bit from string
-                   need_echo = TRUE;
-               }
-            }
-            else if(data_val == ENTER)   // if data is enter
-            {
-                OutputNewLine(); // change to new line
-                int count = str_counter; // save string count to local
-                str_counter = 0; // reset the string counter
-
-                /* Process the string */
-                if (strncmp(str, "TIME", TIME_CMD_SIZE)==EQUAL) // if start with 'TIME'
+                /*process the input*/
+                if(is_ESC_seq == TRUE)   // if is a part of ESC sequence
                 {
-                   if(count == TIME_CMD_SIZE)// if has no parameter
+                   char data_val_uc = data_val & ALPHABET_CASE_OFFSET;    // convert to upper case letter
+                   if(IsUCLetter(data_val_uc))
+                       is_ESC_seq = FALSE;  // most case ESC sequences ended with a letter
+                   need_echo = TRUE;
+                }
+                else if(data_val>=COMMON_CHAR_START && data_val<=COMMON_CHAR_END) // if data is common char
+                {
+                   if(str_counter<STRING_SIZE) // if string not full
                    {
-                       OutputTime(clock);
-                       OutputNewLinePrefix();
-                   }
-                   else if (count > TIME_CMD_SIZE && count <= TIME_PARA_CMD_SIZE)// if has parameters
-                   {
-                       has_error = DecodeTime(str,TIME_CMD_SIZE,count);
-                       if(has_error == FALSE) // if time valid
-                       {
-                           // set to clock
-                           clock.t_sec  = time[TIME_T_SEC];
-                           clock.sec    = time[TIME_SEC];
-                           clock.min    = time[TIME_MIN];
-                           clock.hour   = time[TIME_HOUR];
+                       // store to string and echo back
+                       if((data_val>=ALPHABET_LC_START) && (data_val<=ALPHABET_LC_END)) // if is a lower case letter
+                           data_val &= ALPHABET_CASE_OFFSET;    // convert to upper case letter
 
-                           // Output set time
+                       str[str_counter]=data_val;
+                       str_counter++;
+                       need_echo = TRUE;
+                   }
+                }
+                else if(data_val == BACKSPACE)   // if data is backspace
+                {
+                   if(str_counter >0)    // if string not empty
+                   {
+                       str_counter--;   // remove last bit from string
+                       need_echo = TRUE;
+                   }
+                }
+                else if(data_val == ENTER)   // if data is enter
+                {
+                    OutputNewLine(); // change to new line
+                    int count = str_counter; // save string count to local
+                    str_counter = 0; // reset the string counter
+
+                    /* Process the string */
+                    if (strncmp(str, "TIME", TIME_CMD_SIZE)==EQUAL) // if start with 'TIME'
+                    {
+                       if(count == TIME_CMD_SIZE)// if has no parameter
+                       {
                            OutputTime(clock);
                            OutputNewLinePrefix();
-                           return;
                        }
-                   }
-                   else
-                       has_error = TRUE;
-                }
-                else if (strncmp(str, "DATE", DATE_CMD_SIZE)==EQUAL) // if start with 'DATE'
-                {
-                   if(count == DATE_CMD_SIZE)// if has no parameter
-                   {
-                       OutputCurrentDate();
-                       OutputNewLinePrefix();
-                   }
-                   else if ((count == DATE_PARA_CMD_SIZE1) || (count == DATE_PARA_CMD_SIZE2)) // if has parameters
-                   {
-                       has_error = DecodeDate(str,count);
-                       if(has_error == FALSE) // if date valid
+                       else if (count > TIME_CMD_SIZE && count <= TIME_PARA_CMD_SIZE)// if has parameters
                        {
-                           // set to clock
-                           clock.day = day;
-                           clock.month = mon_int;
-                           clock.year = year;
+                           has_error = DecodeTime(str,TIME_CMD_SIZE,count);
+                           if(has_error == FALSE) // if time valid
+                           {
+                               // set to clock
+                               clock.t_sec  = time[TIME_T_SEC];
+                               clock.sec    = time[TIME_SEC];
+                               clock.min    = time[TIME_MIN];
+                               clock.hour   = time[TIME_HOUR];
 
-                           // Output set time
+                               // Output set time
+                               OutputTime(clock);
+                               OutputNewLinePrefix();
+                               return;
+                           }
+                       }
+                       else
+                           has_error = TRUE;
+                    }
+                    else if (strncmp(str, "DATE", DATE_CMD_SIZE)==EQUAL) // if start with 'DATE'
+                    {
+                       if(count == DATE_CMD_SIZE)// if has no parameter
+                       {
                            OutputCurrentDate();
                            OutputNewLinePrefix();
-                           return;
                        }
-                   }
-                   else // error
-                       has_error = TRUE;
-                }
-                else if (strncmp(str, "ALARM", ALARM_CMD_SIZE)==EQUAL) // if start with 'ALARM'
-                {
-                   if(count == ALARM_CMD_SIZE)// if has no parameter
-                   {
-                       // clear alarm and output msg
-                       is_alarm_active = FALSE;
-                       OutputString("Alarm cleared");
-                       OutputNewLinePrefix();
-                   }
-                   else  if (count > ALARM_CMD_SIZE && count <= ALARM_PARA_CMD_SIZE)// if has parameters
-                   {
-                       has_error = DecodeTime(str,ALARM_CMD_SIZE,count);
-                       if(has_error == FALSE) // if time valid
+                       else if ((count == DATE_PARA_CMD_SIZE1) || (count == DATE_PARA_CMD_SIZE2)) // if has parameters
                        {
-                           // add to alarm
-                           alarm = clock;
-                           IncreaseTime(time[TIME_HOUR],time[TIME_MIN],time[TIME_SEC],time[TIME_T_SEC],&alarm);
-                           is_alarm_active = TRUE;
+                           has_error = DecodeDate(str,count);
+                           if(has_error == FALSE) // if date valid
+                           {
+                               // set to clock
+                               clock.day = day;
+                               clock.month = mon_int;
+                               clock.year = year;
 
-                           // Output set time
-                           OutputString("Alarm at ");
-                           OutputTime(alarm);
-                           OutputNewLinePrefix();
-                           return;
+                               // Output set time
+                               OutputCurrentDate();
+                               OutputNewLinePrefix();
+                               return;
+                           }
                        }
-                   }
-                   else
+                       else // error
+                           has_error = TRUE;
+                    }
+                    else if (strncmp(str, "ALARM", ALARM_CMD_SIZE)==EQUAL) // if start with 'ALARM'
+                    {
+                       if(count == ALARM_CMD_SIZE)// if has no parameter
+                       {
+                           // clear alarm and output msg
+                           is_alarm_active = FALSE;
+                           OutputString("Alarm cleared");
+                           OutputNewLinePrefix();
+                       }
+                       else  if (count > ALARM_CMD_SIZE && count <= ALARM_PARA_CMD_SIZE)// if has parameters
+                       {
+                           has_error = DecodeTime(str,ALARM_CMD_SIZE,count);
+                           if(has_error == FALSE) // if time valid
+                           {
+                               // add to alarm
+                               alarm = clock;
+                               IncreaseTime(time[TIME_HOUR],time[TIME_MIN],time[TIME_SEC],time[TIME_T_SEC],&alarm);
+                               is_alarm_active = TRUE;
+
+                               // Output set time
+                               OutputString("Alarm at ");
+                               OutputTime(alarm);
+                               OutputNewLinePrefix();
+                               return;
+                           }
+                       }
+                       else
+                           has_error = TRUE;
+                    }
+                    else // error
                        has_error = TRUE;
                 }
-                else // error
-                   has_error = TRUE;
-            }
-            else if(data_val == ESC) // if data is ESC
-            {
-               is_ESC_seq = TRUE;
-               need_echo = TRUE;
-            }
+                else if(data_val == ESC) // if data is ESC
+                {
+                   is_ESC_seq = TRUE;
+                   need_echo = TRUE;
+                }
 
-            /*After processed command*/
-            if(need_echo) // echo if need to
-            {
-               TransChar(data.value); // echo back
-               need_echo = FALSE;
+                /*After processed command*/
+                if(need_echo) // echo if need to
+                {
+                   TransChar(data.value); // echo back
+                   need_echo = FALSE;
+                }
+                else if(has_error) // report error
+                {
+                   OutputString("?");
+                   OutputNewLinePrefix();
+                }
+                break;
             }
-            else if(has_error) // report error
+            case SYSTICK: // if is systick
             {
-               OutputString("?");
-               OutputNewLinePrefix();
+                IncreaseTime(0,0,0,1,&clock);
+                CheckAlarm();
+                break;
             }
-        }
-        else // if is systick
-        {
-            IncreaseTime(0,0,0,1,&clock);
-            CheckAlarm();
         }
     }
 }
