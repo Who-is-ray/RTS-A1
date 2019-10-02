@@ -27,6 +27,7 @@
 #define TIME_MIN                1           // position of minute in time array
 #define TIME_SEC                2           // position of second in time array
 #define TIME_T_SEC              3           // position of tenths second in time array
+#define SCREEN_BOTTOM           24          // the line of screen bottom
 
 // ASCII Table Define
 #define COMMON_CHAR_START       32          // char can direct echo start from 32(' ')
@@ -54,6 +55,7 @@ extern Systick_Clock alarm;
 
 char str[STRING_SIZE];      // command string
 int str_counter = 0;        // command string letter counter
+int cursor_line = 1;        // the line of cursor
 int is_ESC_seq = FALSE;     // flag to indicate if is ESC sequences
 int is_alarm_active=FALSE;  // is alarm turned on
 int day,                    // day
@@ -94,8 +96,7 @@ void OutputNewLine()
 /* Move cursor to new line and output prefix*/
 void OutputNewLinePrefix()
 {
-    TransChar(ENTER);
-    TransChar(VERTICAL_TAB);
+    OutputNewLine();
     OutputString("> ");
 }
 
