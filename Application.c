@@ -383,7 +383,7 @@ void CheckInputQueue()
                        OutputTime(clock);
                        OutputNewLinePrefix();
                    }
-                   else // if has parameters
+                   else if (count > TIME_CMD_SIZE && count <= TIME_PARA_CMD_SIZE)// if has parameters
                    {
                        has_error = DecodeTime(str,TIME_CMD_SIZE,count);
                        if(has_error == FALSE) // if time valid
@@ -400,6 +400,8 @@ void CheckInputQueue()
                            return;
                        }
                    }
+                   else
+                       has_error = TRUE;
                 }
                 else if (strncmp(str, "DATE", DATE_CMD_SIZE)==EQUAL) // if start with 'DATE'
                 {
@@ -436,7 +438,7 @@ void CheckInputQueue()
                        OutputString("Alarm cleared");
                        OutputNewLinePrefix();
                    }
-                   else // if has parameters
+                   else  if (count > ALARM_CMD_SIZE && count <= ALARM_PARA_CMD_SIZE)// if has parameters
                    {
                        has_error = DecodeTime(str,ALARM_CMD_SIZE,count);
                        if(has_error == FALSE) // if time valid
@@ -453,6 +455,8 @@ void CheckInputQueue()
                            return;
                        }
                    }
+                   else
+                       has_error = TRUE;
                 }
                 else // error
                    has_error = TRUE;
