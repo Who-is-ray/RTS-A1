@@ -89,12 +89,14 @@ void IncreaseDate(Systick_Clock* c)
 {
     if((days_list[(c->year%LEAP_YEAR_PERIOD)>0? FALSE:TRUE][c->month-1]) == c->day) // if the last day at the month
     {
-        c->day =0;
+        c->day =1;
         if(c->month == NUM_OF_MON)
         {
-            c->month = 0;
+            c->month = 1;
             c->year++;
         }
+        else
+            c->month++;
     }
     else
         c->day++;
