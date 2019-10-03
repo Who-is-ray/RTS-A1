@@ -21,7 +21,7 @@ typedef enum
     SYSTICK
 } Source;
 
-/* The name of queue
+/* The type of queue
  * Only two queues exist
  * Input queue and output queue*/
 typedef enum

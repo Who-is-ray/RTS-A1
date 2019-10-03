@@ -63,6 +63,7 @@
 void UART0_Init(void);
 void InterruptEnable(unsigned long InterruptIndex);
 void UART0_IntEnable(unsigned long flags);
+void UART0_IntDisable(unsigned long flags);
 void UART0_IntHandler(void);
 void InterruptMasterEnable(void);
 void InterruptMasterDisable(void);

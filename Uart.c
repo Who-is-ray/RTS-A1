@@ -51,6 +51,12 @@ void UART0_IntEnable(unsigned long flags)
     UART0_IM_R |= flags;
 }
 
+void UART0_IntDisable(unsigned long flags)
+{
+    /* Clear specified bits for interrupt */
+    UART0_IM_R &= ~flags;
+}
+
 void UART0_IntHandler(void)
 {
 /*

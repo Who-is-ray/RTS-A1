@@ -57,7 +57,7 @@ char str[STRING_SIZE];      // command string
 int str_counter = 0;        // command string letter counter
 int cursor_line = 1;        // the line of cursor
 int is_ESC_seq = FALSE;     // flag to indicate if is ESC sequences
-int is_alarm_active=FALSE;  // is alarm turned on
+int is_alarm_active = FALSE;// is alarm turned on
 int day,                    // day
     mon_int,                // month integer
     year = 0;               // year
