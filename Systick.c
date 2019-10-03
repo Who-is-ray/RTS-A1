@@ -87,7 +87,7 @@ int IsDateVaild(int y/*year*/, int m/*month*/, int d/*day*/)
 /* Increase date by 1*/
 void IncreaseDate(Systick_Clock* c)
 {
-    if((days_list[(c->year%LEAP_YEAR_PERIOD)>0? FALSE:TRUE][c->month-1]) == c->day)
+    if((days_list[(c->year%LEAP_YEAR_PERIOD)>0? FALSE:TRUE][c->month-1]) == c->day) // if the last day at the month
     {
         c->day =0;
         if(c->month == NUM_OF_MON)
@@ -96,6 +96,8 @@ void IncreaseDate(Systick_Clock* c)
             c->year++;
         }
     }
+    else
+        c->day++;
 }
 
 /* Add 'hour:min:sec.t' to selected time*/
